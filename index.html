@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Quantum Survey Voxel GIS - Royal Engineer Tactical Console (Prism Core)</title>
+    <style>
+        :root {
+            --bg-canvas: #1a1512;
+            --parchment-border: #8c7355;
+            --accent-red: #cc3333;
+            --accent-green: #2e8b57;
+            --accent-amber: #b8860b;
+            --panel-bg: rgba(26, 21, 18, 0.92);
+            --text-main: #2b2b2b;
+            --text-hud: #d4c4a8;
+        }
+        * { box-sizing: border-box; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg-canvas); color: var(--text-hud); font-family: 'Courier New', monospace; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+        
+        #view-container { position: relative; width: 100%; height: 100%; }
+        
+        /* 2D Royal Topographic Canvas Viewport */
+        #map-canvas-2d { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; cursor: grab; transition: opacity 0.6s ease; }
+        #map-canvas-2d:active { cursor: grabbing; }
+
+        /* 3D Quantum Voxel Canvas */
+        #webgl-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; opacity: 0; transition: opacity 0.6s ease; }
+        
+        .active-3d #webgl-canvas { opacity: 1; pointer-events: auto; }
+        .active-3d #map-canvas-2d { opacity: 0; pointer-events: none; }
+
+        /* --- TACTICAL SIDE-WINGS LAYOUT (Military Grade GIS) --- */
+        .wing-panel { position: absolute; top: 16px; z-index: 10; width: 280px; background: var(--panel-bg); border: 2px solid var(--parchment-border); border-radius: 6px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); padding: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); display: flex; flex-direction: column; gap: 8px; }
+        
+        #left-wing { left: 16px; }
+        #right-wing { right: 16px; width: 300px; }
+
+        .wing-header { font-size: 0.75rem; color: var(--accent-amber); font-weight: bold; border-bottom: 1px dashed var(--parchment-border); padding-bottom: 4px; letter-spacing: 1px; display: flex; justify-content: space-between; align-items: center; }
+        .data-row { display: flex; justify-content: space-between; font-size: 0.75rem; color: #b0a48e; }
+        .data-val { color: #f4ecd8; font-weight: bold; }
+        
+        /* Red-Flag Deficit Protocol Styling */
+        .status-red { color: var(--accent-red) !important; animation: pulse-red 1.5s infinite; }
+        @keyframes pulse-red { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+        /* Tactical PIP Camera Stream View */
+        #cam-container { width: 100%; height: 100px; background: #000; border: 1px solid var(--parchment-border); border-radius: 4px; overflow: hidden; position: relative; margin-top: 4px; }
+        #tactical-video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+        .cam-overlay { position: absolute; bottom: 4px; left: 6px; font-size: 0.6rem; color: var(--accent-amber); background: rgba(0,0,0,0.7); padding: 2px 4px; border-radius: 2px; }
+
+        /* --- BOTTOM TELEMETRY PACKET STREAM TABLE --- */
+        #telemetry-stream-panel { position: absolute; bottom: 85px; left: 16px; right: 16px; z-index: 10; background: var(--panel-bg); border: 1px solid var(--parchment-border); border-radius: 6px; padding: 8px 12px; backdrop-filter: blur(10px); display: flex; flex-direction: column; gap: 4px; max-height: 110px; overflow-y: auto; }
+        .stream-title { font-size: 0.7rem; color: var(--accent-amber); font-weight: bold; letter-spacing: 1px; display: flex; justify-content: space-between; }
+        table.stream-table { width: 100%; border-collapse: collapse; font-size: 0.7rem; text-align: left; }
+        table.stream-table th { color: #8c7355; border-bottom: 1px solid #44382c; padding: 2px 4px; }
+        table.stream-table td { padding: 2px 4px; border-bottom: 1px dashed rgba(140,115,85,0.2); color: #d4c4a8; }
+
+        /* --- BOTTOM HANDHELD CONSOLE DECK --- */
+        #console-deck { position: absolute; bottom: 16px; left: 16px; right: 16px; z-index: 10; background: var(--panel-bg); padding: 10px 16px; border: 2px solid var(--parchment-border); border-radius: 8px; backdrop-filter: blur(10px); display: flex; gap: 8px; align-items: center; justify-content: space-between; box-shadow: 0 4px 25px rgba(0,0,0,0.9); flex-wrap: wrap; }
+        
+        .deck-group { display: flex; gap: 6px; align-items: center; flex: 1; min-width: 120px; }
+        input { background: #111; border: 1px solid var(--parchment-border); color: #fff; padding: 6px 8px; font-family: monospace; width: 100%; border-radius: 4px; font-size: 0.75rem; outline: none; }
+        
+        button { background: var(--accent-green); color: #fff; border: none; padding: 8px 12px; font-weight: bold; cursor: pointer; border-radius: 4px; font-family: monospace; font-size: 0.75rem; transition: 0.2s; white-space: nowrap; flex: 1; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
+        button:active { transform: scale(0.96); background: var(--accent-red); }
+        .btn-alt { background: #332922; color: #d4c4a8; border: 1px solid var(--parchment-border); }
+
+        /* Karma Archive Modal / Drawer Side List */
+        #karma-archive-panel { position: absolute; top: 16px; right: 335px; z-index: 10; width: 220px; background: var(--panel-bg); border: 1px solid var(--parchment-border); border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 6px; max-height: 250px; overflow-y: auto; }
+        .karma-item { font-size: 0.65rem; background: #241c17; border: 1px solid #44382c; padding: 4px 6px; border-radius: 3px; cursor: pointer; color: #d4c4a8; display: flex; justify-content: space-between; align-items: center; }
+        .karma-item:hover { background: #332922; border-color: var(--accent-amber); }
+
+        @media (max-width: 1024px) {
+            .wing-panel { width: 240px; padding: 8px; }
+            #right-wing { right: 16px; width: 250px; }
+            #karma-archive-panel { display: none; } /* ซ่อนบนจอเล็กเพื่อความเป็นระเบียบ */
+        }
+    </style>
+</head>
+<body>
+    <div id="view-container">
+        <!-- 2D Royal Topographic Canvas Viewport -->
+        <canvas id="map-canvas-2d"></canvas>
+        <!-- 3D Quantum Voxel Canvas -->
+        <canvas id="webgl-canvas"></canvas>
+        
+        <!-- --- LEFT WING: Spatial Telemetry & Real GPS --- -->
+        <div class="wing-panel" id="left-wing">
+            <div class="wing-header">
+                <span>[ SPATIAL TELEMETRY ]</span>
+                <span id="gps-status-badge" class="status-red">● NO FIX</span>
+            </div>
+            <div class="data-row"><span>Lat/Lng:</span><span id="coords" class="data-val status-red">18.7883, 98.9853</span></div>
+            <div class="data-row"><span>Azimuth (True North):</span><span id="azimuth-val" class="data-val status-red">--° (DISCONNECTED)</span></div>
+            <div class="data-row"><span>Laser Rangefinder:</span><span id="laser-val" class="data-val">0.0 m</span></div>
+            <div class="data-row"><span>Elevation (Z MSL):</span><span id="elev-val" class="data-val status-red">UNKNOWN</span></div>
+            <button id="gps-btn" class="btn-alt" style="margin-top: 4px; padding: 5px;">🛰️ ACQUIRE REAL GPS</button>
+        </div>
+
+        <!-- --- KARMA ARCHIVE SIDE PANEL (*.krm Soul Files) --- -->
+        <div id="karma-archive-panel">
+            <div class="wing-header" style="font-size: 0.7rem;">
+                <span>[ SOUL ARCHIVE *.krm ]</span>
+            </div>
+            <div id="karma-list" style="display: flex; flex-direction: column; gap: 4px;">
+                <div style="font-size: 0.65rem; color: #776a58; text-align: center; padding: 6px;">(No Karma Recorded)</div>
+            </div>
+        </div>
+
+        <!-- --- RIGHT WING: Hardware Guard & Tactical Cam --- -->
+        <div class="wing-panel" id="right-wing">
+            <div class="wing-header">
+                <span>[ HARDWARE & OPTICAL ]</span>
+                <span id="fps" class="data-val">60 FPS</span>
+            </div>
+            <div class="data-row"><span>IMU Ring Buffer:</span><span id="imu-status" class="data-val status-red">FAULT / NO DATA</span></div>
+            <div class="data-row"><span>BMS Voltage:</span><span id="bms-status" class="data-val status-red">0.0V (UNREAD)</span></div>
+            
+            <!-- Tactical PIP Camera Stream -->
+            <div id="cam-container">
+                <video id="tactical-video" autoplay playsinline muted></video>
+                <div id="cam-overlay-text" class="cam-overlay status-red">CAM: OFFLINE</div>
+            </div>
+            <button id="cam-toggle" class="btn-alt" style="padding: 4px; font-size: 0.7rem;">📷 INIT OPTICAL FEED</button>
+        </div>
+
+        <!-- --- BOTTOM LIVE TELEMETRY PACKET STREAM TABLE --- -->
+        <div id="telemetry-stream-panel">
+            <div class="stream-title">
+                <span>[ RAW TELEMETRY STREAM PACKETS ]</span>
+                <span id="stream-status" class="status-red">LISTENING BUFFER...</span>
+            </div>
+            <table class="stream-table">
+                <thead>
+                    <tr>
+                        <th>SOURCE</th>
+                        <th>PACKET ID</th>
+                        <th>STATUS / VALUE</th>
+                        <th>TIMESTAMP</th>
+                    </tr>
+                </thead>
+                <tbody id="stream-tbody">
+                    <!-- Dynamic Stream Rows -->
+                    <tr>
+                        <td class="status-red">[EUC]</td>
+                        <td>PKT_001</td>
+                        <td class="status-red">OFFLINE (NO SIGNAL)</td>
+                        <td>--:--:--</td>
+                    </tr>
+                    <tr>
+                        <td class="status-red">[iPhone]</td>
+                        <td>IMU_RAW</td>
+                        <td class="status-red">DISCONNECTED</td>
+                        <td>--:--:--</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- --- BOTTOM HANDHELD CONSOLE DECK --- -->
+        <div id="console-deck">
+            <div class="deck-group">
+                <input type="text" id="lat-input" value="18.7883" placeholder="Lat">
+                <input type="text" id="lng-input" value="98.9853" placeholder="Lng">
+            </div>
+            <div class="deck-group" style="flex: 1.5; display: flex; gap: 6px;">
+                <button id="pin-btn" class="btn-alt">📍 PIN TARGET</button>
+                <button id="record-karma-btn" style="background: var(--accent-amber); color: #111;">📂 RECORD *.krm</button>
+                <button id="transfer-btn">⚡ 3D (<span id="mode-text">2D MAP</span>)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Raw WebGL & Three.js CDN -->
+    <script type="module">
+        import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js';
+
+        // --- 1. 2D Royal Topographic Canvas Viewport (Parchment & Contour Style) ---
+        const mapCanvas = document.getElementById('map-canvas-2d');
+        const ctx2d = mapCanvas.getContext('2d');
+        let mapX = 0, mapY = 0, isDragging = false, startX, startY;
+        let lat = 18.7883, lng = 98.9853;
+        let active3D = false;
+        let gpsAcquired = false;
+        const pinnedTargets = [];
+        const karmaArchives = [];
+
+        function resize2D() {
+            mapCanvas.width = window.innerWidth;
+            mapCanvas.height = window.innerHeight;
+            drawRoyalTopographicMap();
+        }
+
+        function drawRoyalTopographicMap() {
+            // Royal Parchment Background Color
+            ctx2d.fillStyle = '#221c17';
+            ctx2d.fillRect(0, 0, mapCanvas.width, mapCanvas.height);
+
+            // Draw Topographic Contour Lines (Golden Brown / Amber style)
+            ctx2d.strokeStyle = '#44382c';
+            ctx2d.lineWidth = 1;
+            const step = 80;
+            const offsetX = mapX % step;
+            const offsetY = mapY % step;
+
+            for (let x = offsetX; x < mapCanvas.width; x += step) {
+                ctx2d.beginPath(); ctx2d.moveTo(x, 0); ctx2d.lineTo(x, mapCanvas.height); ctx2d.stroke();
+            }
+            for (let y = offsetY; y < mapCanvas.height; y += step) {
+                ctx2d.beginPath(); ctx2d.moveTo(0, y); ctx2d.lineTo(mapCanvas.width, y); ctx2d.stroke();
+            }
+
+            // Draw Simulated Contour Waves (Royal Topographic Curves)
+            ctx2d.strokeStyle = 'rgba(186, 140, 99, 0.25)';
+            ctx2d.lineWidth = 1.5;
+            for (let i = -200; i < mapCanvas.width + 200; i += 120) {
+                ctx2d.beginPath();
+                ctx2d.arc(i + (mapX * 0.2), mapCanvas.height / 2 + (mapY * 0.2), 180, 0, Math.PI * 2);
+                ctx2d.stroke();
+            }
+
+            // Draw Pinned Targets
+            pinnedTargets.forEach((p, idx) => {
+                ctx2d.fillStyle = '#cc3333';
+                ctx2d.beginPath();
+                ctx2d.arc(p.x, p.y, 6, 0, Math.PI * 2);
+                ctx2d.fill();
+                ctx2d.fillStyle = '#f4ecd8';
+                ctx2d.font = '10px Courier New';
+                ctx2d.fillText(`ROYAL PIN #${idx+1}`, p.x + 10, p.y + 4);
+            });
+
+            // Center Crosshair (Royal Survey Target)
+            const cx = mapCanvas.width / 2;
+            const cy = mapCanvas.height / 2;
+            ctx2d.strokeStyle = '#cc3333';
+            ctx2d.lineWidth = 2;
+            ctx2d.beginPath();
+            ctx2d.arc(cx, cy, 18, 0, Math.PI * 2);
+            ctx2d.stroke();
+
+            ctx2d.fillStyle = '#d4c4a8';
+            ctx2d.font = '11px Courier New';
+            ctx2d.fillText("👑 ROYAL TOPOGRAPHIC PRISM MESH", cx + 24, cy - 6);
+        }
+
+        mapCanvas.addEventListener('pointerdown', (e) => { isDragging = true; startX = e.clientX - mapX; startY = e.clientY - mapY; });
+        window.addEventListener('pointermove', (e) => {
+            if (!isDragging || active3D) return;
+            mapX = e.clientX - startX;
+            mapY = e.clientY - startY;
+            if (!gpsAcquired) {
+                lat = 18.7883 - (mapY * 0.0001);
+                lng = 98.9853 + (mapX * 0.0001);
+                document.getElementById('coords').innerText = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                document.getElementById('lat-input').value = lat.toFixed(4);
+                document.getElementById('lng-input').value = lng.toFixed(4);
+            }
+            document.getElementById('laser-val').innerText = (120 + Math.abs(mapX * 0.01)).toFixed(1) + " m";
+            drawRoyalTopographicMap();
+        });
+        window.addEventListener('pointerup', () => { isDragging = false; });
+
+        // --- 2. Real GPS Hardware Integration & Red-Flag State Handling ---
+        document.getElementById('gps-btn').addEventListener('click', () => {
+            if (!navigator.geolocation) {
+                alert('Geolocation not supported');
+                return;
+            }
+            document.getElementById('coords').innerText = "ACQUIRING...";
+            navigator.geolocation.getCurrentPosition((position) => {
+                gpsAcquired = true;
+                lat = position.coords.latitude;
+                lng = position.coords.longitude;
+                document.getElementById('coords').innerText = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                document.getElementById('coords').className = "data-val";
+                document.getElementById('gps-status-badge').innerText = "● LOCKED";
+                document.getElementById('gps-status-badge').className = "data-val";
+                document.getElementById('lat-input').value = lat.toFixed(4);
+                document.getElementById('lng-input').value = lng.toFixed(4);
+                
+                if (position.coords.heading) {
+                    document.getElementById('azimuth-val').innerText = position.coords.heading.toFixed(0) + "° TRUE";
+                    document.getElementById('azimuth-val').className = "data-val";
+                }
+                if (position.coords.altitude) {
+                    document.getElementById('elev-val').innerText = position.coords.altitude.toFixed(1) + " MSL";
+                    document.getElementById('elev-val').className = "data-val";
+                }
+            }, (err) => {
+                alert('GPS Lock Failed or Denied.');
+                document.getElementById('coords').innerText = "18.7883, 98.9853";
+            }, { enableHighAccuracy: true });
+        });
+
+        // --- 3. Tactical Camera Feed (PIP) & Red-Flag Fallback ---
+        const videoElem = document.getElementById('tactical-video');
+        let camActive = false;
+        
+        async function toggleCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+                videoElem.srcObject = stream;
+                camActive = true;
+                document.getElementById('cam-overlay-text').innerText = "CAM: ACTIVE (PIP)";
+                document.getElementById('cam-overlay-text').className = "cam-overlay";
+            } catch (e) {
+                document.getElementById('cam-overlay-text').innerText = "CAM: OFFLINE (FAULT)";
+                document.getElementById('cam-overlay-text').className = "cam-overlay status-red";
+            }
+        }
+        document.getElementById('cam-toggle').addEventListener('click', toggleCamera);
+
+        // --- 4. Pin Target Action ---
+        document.getElementById('pin-btn').addEventListener('click', () => {
+            pinnedTargets.push({ x: mapCanvas.width / 2, y: mapCanvas.height / 2 });
+            drawRoyalTopographicMap();
+        });
+
+        // --- 5. Soul Archive Recording (*.krm / karma) ---
+        document.getElementById('record-karma-btn').addEventListener('click', () => {
+            const now = new Date();
+            const timeStr = `${String(now.getHours()).padStart(2,'0')}.${String(now.getMinutes()).padStart(2,'0')}`;
+            const bedtime = `${timeStr}-06.00`; // จำลองเวลานอนถึงเวลานอนตามพิมพ์เขียว
+            const karmaName = `Soul_${now.getDate()}-${now.getMonth()+1}-${now.getFullYear()}_${bedtime}.krm`;
+            
+            const snapshot = {
+                filename: karmaName,
+                timestamp: now.toISOString(),
+                lat: lat,
+                lng: lng,
+                pinnedCount: pinnedTargets.length
+            };
+            
+            karmaArchives.push(snapshot);
+            renderKarmaList();
+        });
+
+        function renderKarmaList() {
+            const listEl = document.getElementById('karma-list');
+            if (karmaArchives.length === 0) return;
+            listEl.innerHTML = '';
+            karmaArchives.forEach((item, idx) => {
+                const div = document.createElement('div');
+                div.className = 'karma-item';
+                div.innerHTML = `<span>📂 ${item.filename}</span><span>👁️</span>`;
+                div.addEventListener('click', () => {
+                    alert(`Loaded Soul Archive [${item.filename}]\nLat/Lng: ${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}\nPinned Targets: ${item.pinnedCount}`);
+                });
+                listEl.appendChild(div);
+            });
+        }
+
+        // --- 6. WebGL 3D Quantum Voxel Contour Engine ---
+        const canvas3D = document.getElementById('webgl-canvas');
+        const renderer = new THREE.WebGLRenderer({ canvas: canvas3D, antialias: false, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 50, 70);
+        camera.lookAt(0, 0, 0);
+
+        const size = 40;
+        const geometry = new THREE.BoxGeometry(0.85, 0.85, 0.85);
+        const material = new THREE.MeshBasicMaterial({ color: 0xb8860b, wireframe: true });
+        
+        const count = size * size;
+        const voxelMesh = new THREE.InstancedMesh(geometry, material, count);
+        voxelMesh.frustumCulled = true;
+
+        const dummy = new THREE.Object3D();
+        let idx = 0;
+        for (let x = 0; x < size; x++) {
+            for (let z = 0; z < size; z++) {
+                const px = (x - size / 2) * 1.2;
+                const pz = (z - size / 2) * 1.2;
+                const py = Math.sin(x * 0.15) * Math.cos(z * 0.15) * 5;
+                dummy.position.set(px, py, pz);
+                dummy.updateMatrix();
+                voxelMesh.setMatrixAt(idx++, dummy.matrix);
+            }
+        }
+        scene.add(voxelMesh);
+
+        // --- 7. Animation Loop & Telemetry Stream Streamer ---
+        let lastTime = performance.now();
+        let frameCount = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            const now = performance.now();
+            frameCount++;
+            if (now - lastTime >= 1000) {
+                document.getElementById('fps').innerText = Math.round((frameCount * 1000) / (now - lastTime)) + " FPS";
+                frameCount = 0;
+                lastTime = now;
+                
+                // จำลองสตรีมแพ็กเกจข้อมูลดิบวิ่งไปวิ่งมาตามกฎ Dashboard สีแดงเตือนภัย
+                const timeStampText = new Date().toTimeString().split(' ')[0];
+                const tbody = document.getElementById('stream-tbody');
+                tbody.innerHTML = `
+                    <tr>
+                        <td class="status-red">[EUC]</td>
+                        <td>PKT_${Math.floor(Math.random()*900+100)}</td>
+                        <td class="status-red">DISCONNECTED (NO LINK)</td>
+                        <td>${timeStampText}</td>
+                    </tr>
+                    <tr>
+                        <td class="status-red">[iPhone]</td>
+                        <td>IMU_BUF</td>
+                        <td class="status-red">PACKET LOSS / FAULT</td>
+                        <td>${timeStampText}</td>
+                    </tr>
+                `;
+            }
+
+            if (active3D) {
+                voxelMesh.rotation.y += 0.004;
+            }
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // --- 8. Transition Action ---
+        const btn = document.getElementById('transfer-btn');
+        const container = document.getElementById('view-container');
+        const modeText = document.getElementById('mode-text');
+
+        btn.addEventListener('click', () => {
+            active3D = !active3D;
+            if (active3D) {
+                container.classList.add('active-3d');
+                modeText.innerText = "3D VOXEL";
+            } else {
+                container.classList.remove('active-3d');
+                modeText.innerText = "2D MAP";
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            resize2D();
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        resize2D();
+    </script>
+</body>
+</html>

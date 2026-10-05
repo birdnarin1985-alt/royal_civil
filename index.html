@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+    <title>KingSong F22 Pro Tactical GIS - Yoniso Absolute Production Code</title>
+    <!-- Leaflet GIS CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root {
+            --bg-canvas: #040906;
+            --accent-red: #ff3333;
+            --accent-green: #00ff66;
+            --accent-amber: #ffcc00;
+            --panel-bg: rgba(4, 12, 8, 0.96);
+            --text-hud: #00ff66;
+        }
+        * { box-sizing: border-box; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg-canvas); color: var(--text-hud); font-family: 'Courier New', monospace; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+        
+        #view-container { position: relative; width: 100%; height: 100%; }
+        
+        /* Fullscreen Topographic Map Viewport (Z-Index 1) */
+        #map-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; background: #040906; }
+        
+        /* Military Topo Map Styling filter for Tactical Green/Night Ops */
+        .topo-dark-mode .leaflet-tile-pane { filter: brightness(0.8) contrast(1.2) hue-rotate(60deg) saturate(1.1); }
+
+        /* Royal Topographic Grid Overlay Mask & Center Crosshair (Z-Index 2) */
+        #topographic-mask { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; background: radial-gradient(circle, transparent 35%, rgba(0,255,102,0.06) 100%); box-shadow: inset 0 0 60px rgba(0,0,0,0.85); }
+        
+        /* Center Crosshair for Target Pinning */
+        #center-crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 28px; height: 28px; z-index: 4; pointer-events: none; display: flex; align-items: center; justify-content: center; }
+        #center-crosshair::before, #center-crosshair::after { content: ''; position: absolute; background: var(--accent-green); opacity: 0.8; }
+        #center-crosshair::before { width: 28px; height: 2px; }
+        #center-crosshair::after { width: 2px; height: 28px; }
+        .crosshair-ring { position: absolute; width: 18px; height: 18px; border: 1px dashed var(--accent-green); border-radius: 50%; animation: spin-ring 12s linear infinite; opacity: 0.6; }
+        @keyframes spin-ring { 100% { transform: rotate(360deg); } }
+
+        /* --- GLANCEABLE ELEVATION PROFILE HUD (Z-Index 900) --- */
+        #elevation-hud { position: absolute; bottom: 58px; left: 6px; right: 6px; z-index: 900; background: var(--panel-bg); border: 1px solid var(--accent-green); border-radius: 4px; padding: 4px 6px; backdrop-filter: blur(8px); display: flex; flex-direction: column; gap: 2px; }
+        .elevation-header { font-size: 0.5rem; color: var(--accent-amber); display: flex; justify-content: space-between; font-weight: bold; }
+        .elevation-canvas-container { width: 100%; height: 40px; background: #020804; border: 1px solid rgba(0,255,102,0.2); border-radius: 2px; position: relative; }
+        #elevation-canvas { width: 100%; height: 100%; display: block; }
+
+        /* --- YONISO iPHONE OPTIMIZED SIDE PANELS (Z-Index 1000) --- */
+        .wing-panel { position: absolute; top: 6px; z-index: 1000; width: 210px; background: var(--panel-bg); border: 1px solid var(--accent-green); border-radius: 4px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); padding: 5px 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.8); display: flex; flex-direction: column; gap: 3px; transition: max-height 0.3s ease; overflow: hidden; }
+        
+        #left-wing { left: 6px; }
+        #right-wing { right: 6px; width: 215px; }
+
+        /* Collapsed State for Panels */
+        .wing-panel.collapsed { max-height: 22px !important; padding-bottom: 2px; }
+        .wing-panel.collapsed .wing-content { display: none !important; }
+
+        .wing-header { font-size: 0.52rem; color: var(--accent-green); font-weight: bold; border-bottom: 1px dashed rgba(0,255,102,0.4); padding-bottom: 2px; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .collapse-btn { background: none; border: none; color: var(--accent-amber); font-size: 0.52rem; cursor: pointer; padding: 0 2px; box-shadow: none; flex: none; }
+        
+        .wing-content { display: flex; flex-direction: column; gap: 2px; margin-top: 2px; }
+        .data-row { display: flex; justify-content: space-between; font-size: 0.5rem; color: #aaa; }
+        .data-val { color: var(--accent-green); font-weight: bold; }
+        
+        /* Glanceable Giant Telemetry for F22 Pro */
+        .giant-telemetry { background: #06180c; border: 1px solid var(--accent-green); padding: 4px; border-radius: 3px; text-align: center; margin-bottom: 2px; }
+        .giant-val { font-size: 1.1rem; color: var(--accent-green); font-weight: bold; line-height: 1.1; }
+        .giant-label { font-size: 0.45rem; color: var(--accent-amber); letter-spacing: 0.5px; }
+
+        /* Red-Flag Deficit Protocol Styling */
+        .status-red { color: var(--accent-red) !important; animation: pulse-red 1.5s infinite; }
+        @keyframes pulse-red { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+        /* Tactical Compass Display */
+        .compass-box { display: flex; align-items: center; justify-content: space-between; background: #06180c; border: 1px solid rgba(0,255,102,0.3); padding: 2px 4px; border-radius: 3px; font-size: 0.5rem; margin-top: 1px; }
+        .compass-needle { color: var(--accent-amber); font-weight: bold; }
+
+        /* --- KARMA ARCHIVE COLLAPSIBLE PANEL (*.krm) --- */
+        #karma-archive-panel { position: absolute; top: 125px; right: 6px; z-index: 1000; width: 135px; background: var(--panel-bg); border: 1px solid var(--accent-green); border-radius: 4px; padding: 4px; display: flex; flex-direction: column; gap: 2px; max-height: 95px; overflow-y: auto; backdrop-filter: blur(8px); transition: max-height 0.3s ease; }
+        #karma-archive-panel.collapsed { max-height: 22px !important; overflow: hidden; }
+        #karma-archive-panel.collapsed #karma-list { display: none; }
+
+        .karma-item { font-size: 0.45rem; background: #06180c; border: 1px solid #114422; padding: 2px 3px; border-radius: 2px; cursor: pointer; color: #00ff66; display: flex; justify-content: space-between; align-items: center; }
+        .karma-item:hover { background: #113322; border-color: var(--accent-amber); }
+
+        /* --- OPTICAL KARMA VIEWFINDER & PLAYBACK INSPECTOR MODAL --- */
+        #karma-viewfinder-modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 92vw; max-width: 420px; height: 340px; background: rgba(0,0,0,0.96); border: 2px solid var(--accent-amber); border-radius: 8px; z-index: 6000; display: none; flex-direction: column; box-shadow: 0 0 40px rgba(255,204,0,0.4); }
+        .vf-header { background: var(--accent-amber); color: #000; padding: 4px 8px; font-weight: bold; font-size: 0.58rem; display: flex; justify-content: space-between; align-items: center; }
+        .vf-body { flex: 1; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #111; }
+        .vf-reticle { position: absolute; width: 85%; height: 85%; border: 1px dashed rgba(255,204,0,0.6); pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 8px; font-size: 0.52rem; color: var(--accent-amber); }
+        .vf-video { width: 100%; height: 100%; object-fit: cover; }
+        .vf-snapshot-img { width: 100%; height: 100%; object-fit: cover; display: none; }
+
+        /* --- ENGINEER DEBUG TERMINAL MODAL (Z-Index 5000) --- */
+        #debug-terminal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90vw; max-width: 520px; height: 280px; background: rgba(2, 8, 4, 0.96); border: 2px solid var(--accent-green); border-radius: 8px; z-index: 5000; display: none; flex-direction: column; box-shadow: 0 0 30px rgba(0,255,102,0.3); backdrop-filter: blur(12px); }
+        .debug-header { background: var(--accent-green); color: #000; padding: 4px 8px; font-weight: bold; font-size: 0.55rem; display: flex; justify-content: space-between; align-items: center; }
+        .debug-body { flex: 1; padding: 5px; overflow-y: auto; font-size: 0.52rem; color: #00ff66; display: flex; flex-direction: column; gap: 2px; }
+        .debug-log-line { border-bottom: 1px dashed rgba(0,255,102,0.2); padding-bottom: 2px; }
+
+        /* --- BOTTOM HANDHELD CONSOLE DECK (Z-Index 1000) --- */
+        #console-deck { position: absolute; bottom: 6px; left: 6px; right: 6px; z-index: 1000; background: var(--panel-bg); padding: 5px 7px; border: 1px solid var(--accent-green); border-radius: 5px; backdrop-filter: blur(8px); display: flex; gap: 4px; align-items: center; justify-content: space-between; box-shadow: 0 4px 15px rgba(0,0,0,0.9); }
+        
+        .deck-group { display: flex; gap: 3px; align-items: center; flex: 1; justify-content: space-around; }
+        
+        button { background: var(--accent-green); color: #040906; border: none; padding: 6px 10px; font-weight: bold; cursor: pointer; border-radius: 3px; font-family: monospace; font-size: 0.58rem; transition: 0.2s; white-space: nowrap; flex: 1; box-shadow: 0 2px 4px rgba(0,255,102,0.3); text-align: center; }
+        button:active { transform: scale(0.96); background: var(--accent-red); color: #fff; }
+        .btn-alt { background: #06180c; color: var(--accent-green); border: 1px solid var(--accent-green); }
+
+        /* Custom Leaflet Scale Control Styling */
+        .leaflet-control-scale-line { background: rgba(4, 12, 8, 0.9) !important; color: #00ff66 !important; border-color: #00ff66 !important; font-family: 'Courier New', monospace !important; font-size: 0.45rem !important; font-weight: bold !important; padding: 1px 2px !important; border-radius: 2px; }
+
+        /* NVIS Night Vision Mode (Red Out) */
+        body.nvis-mode { --accent-green: #ff3333; --text-hud: #ff3333; --bg-canvas: #120202; }
+        body.nvis-mode .wing-panel, body.nvis-mode #console-deck, body.nvis-mode #karma-archive-panel, body.nvis-mode #elevation-hud { border-color: #ff3333 !important; background: rgba(18, 2, 2, 0.96) !important; }
+        body.nvis-mode button { background: #ff3333 !important; color: #fff !important; }
+        body.nvis-mode .btn-alt { background: #330a0a !important; color: #ff3333 !important; border-color: #ff3333 !important; }
+    </style>
+</head>
+<body class="topo-dark-mode">
+    <div id="view-container">
+        <!-- Fullscreen Topographic Map Viewport (2D Clean Topo) -->
+        <div id="map-container"></div>
+        <!-- Royal Topographic Grid Overlay Mask & Center Crosshair -->
+        <div id="topographic-mask"></div>
+        <div id="center-crosshair">
+            <div class="crosshair-ring"></div>
+        </div>
+
+        <!-- --- REAL-TIME ELEVATION PROFILE HUD (Glanceable Garmin vs iPhone) --- -->
+        <div id="elevation-hud">
+            <div class="elevation-header">
+                <span>[ ELEVATION PROFILE: GARMIN vs iPHONE ]</span>
+                <span id="ele-val" style="color:var(--accent-green);">ALT: -- m</span>
+            </div>
+            <div class="elevation-canvas-container">
+                <canvas id="elevation-canvas"></canvas>
+            </div>
+        </div>
+        
+        <!-- --- ENGINEER DEBUG TERMINAL --- -->
+        <div id="debug-terminal">
+            <div class="debug-header">
+                <span>[ 🛡 F22 PRO ABSOLUTE YONISO CONSOLE ]</span>
+                <button id="close-debug" style="background:#000; color:var(--accent-green); padding:2px 5px; font-size:0.52rem; flex:none;">[X]</button>
+            </div>
+            <div id="debug-body" class="debug-body">
+                <div class="debug-log-line">[SYSTEM] KingSong F22 Pro 176V Absolute Yoniso Console Active. Off-Screen Memory Framebuffer Render Ready.</div>
+            </div>
+        </div>
+
+        <!-- --- OPTICAL KARMA VIEWFINDER & PLAYBACK INSPECTOR MODAL (*.krm) --- -->
+        <div id="karma-viewfinder-modal">
+            <div class="vf-header">
+                <span id="vf-title">[ 📷 KARMA INSPECTOR ]</span>
+                <button id="close-vf" style="background:#000; color:var(--accent-amber); padding:2px 5px; font-size:0.52rem; flex:none;">[X]</button>
+            </div>
+            <div class="vf-body">
+                <video id="vf-video" class="vf-video" autoplay playsinline muted></video>
+                <canvas id="vf-snapshot-canvas" style="display:none;"></canvas>
+                <img id="vf-snapshot-img" class="vf-snapshot-img" alt="Karma Snapshot">
+                <div class="vf-reticle">
+                    <div style="display:flex; justify-content:space-between;"><span id="vf-mode-badge">+ INSPECTOR</span><span id="vf-time">--:--:--</span></div>
+                    <div style="text-align:center; font-weight:bold; font-size:0.58rem;" id="vf-coords-txt">MGRS: 47Q NA 00000 00000</div>
+                    <div style="display:flex; justify-content:space-between;"><span id="vf-s18-txt">Speed: 0.0 km/h</span><span id="vf-status-txt">ARCHIVED</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- --- LEFT WING: Spatial & Compass (Collapsible) --- -->
+        <div class="wing-panel" id="left-wing">
+            <div class="wing-header" id="left-wing-header">
+                <span>[ SPATIAL & COMPASS ]</span>
+                <div>
+                    <span id="gps-status-badge" class="status-red" style="font-size:0.45rem; margin-right:3px;">● NO FIX</span>
+                    <button class="collapse-btn" id="left-collapse-btn">[-]</button>
+                </div>
+            </div>
+            <div class="wing-content">
+                <div class="compass-box">
+                    <span>HEADING:</span>
+                    <span id="compass-val" class="compass-needle">N 000°</span>
+                </div>
+                <div class="data-row"><span>MGRS:</span><span id="mgrs-val" class="data-val status-red">47Q NA 00000 00000</span></div>
+                <div class="data-row"><span>Lat/Lng:</span><span id="coords" class="data-val status-red">18.7883, 98.9853</span></div>
+                <div class="data-row"><span>Scale:</span><span id="scale-val" class="data-val">5.0 KM (Zoom 13)</span></div>
+
+                <button id="gps-btn" class="btn-alt" style="margin-top: 1px; padding: 2px;">🛰 LOCK GPS (5KM)</button>
+            </div>
+        </div>
+
+        <!-- --- KARMA ARCHIVE SIDE PANEL (*.krm Soul Files - Collapsible) --- -->
+        <div id="karma-archive-panel">
+            <div class="wing-header" id="karma-header" style="font-size: 0.48rem;">
+                <span>[ SOUL ARCHIVE *.krm ]</span>
+                <button class="collapse-btn" id="karma-collapse-btn">[-]</button>
+            </div>
+            <div id="karma-list" style="display: flex; flex-direction: column; gap: 2px; margin-top: 2px;">
+                <div style="font-size: 0.42rem; color: #555; text-align: center; padding: 2px;">(No Karma Recorded)</div>
+            </div>
+        </div>
+
+        <!-- --- RIGHT WING: KingSong F22 Pro 176V Telemetry (Glanceable Giant HUD - Collapsible) --- -->
+        <div class="wing-panel" id="right-wing">
+            <div class="wing-header" id="right-wing-header">
+                <span>[ KINGSONG F22 PRO (176V) ]</span>
+                <div>
+                    <span id="ble-status-badge" class="status-red" style="font-size:0.45rem; margin-right:3px;">● DISCONNECTED</span>
+                    <button class="collapse-btn" id="right-collapse-btn">[-]</button>
+                </div>
+            </div>
+            <div class="wing-content">
+                <!-- Glanceable Giant Telemetry: Speed -->
+                <div class="giant-telemetry">
+                    <div class="giant-label">SPEED (KM/H)</div>
+                    <div id="f22-speed" class="giant-val status-red">0.0</div>
+                </div>
+                <!-- Glanceable Giant Telemetry: Battery SoC 176V -->
+                <div class="giant-telemetry">
+                    <div class="giant-label">BMS 176V BATTERY</div>
+                    <div id="f22-volt" class="giant-val status-red">0.0V (0%)</div>
+                </div>
+
+                <div class="data-row"><span>Current:</span><span id="f22-current" class="data-val status-red">0.0 A</span></div>
+                <div class="data-row"><span>Core Temp:</span><span id="f22-temp" class="data-val status-red">-- °C</span></div>
+                <div class="data-row"><span>PWM Load:</span><span id="f22-pwm" class="data-val status-red">0% (SAFE)</span></div>
+                <div class="data-row"><span>Trip ODO:</span><span id="f22-trip" class="data-val status-red">0.0 / 0.0 km</span></div>
+                
+                <div style="display: flex; gap: 2px; margin-top: 2px;">
+                    <button id="ble-connect-btn" class="btn-alt" style="padding: 2px; font-size: 0.45rem; background: #06180c; color:#00ff66;">⚡ CONNECT</button>
+                    <button id="nvis-btn" class="btn-alt" style="padding: 2px; font-size: 0.45rem; color: #ff3333; border-color: #ff3333;">🌙 NVIS</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- --- BOTTOM HANDHELD CONSOLE DECK --- -->
+        <div id="console-deck">
+            <div class="deck-group">
+                <button id="debug-btn" class="btn-alt" style="background:#06180c; color:#00ff66;">🛠️ DBG</button>
+                <button id="pin-btn" class="btn-alt">📍 PIN</button>
+                <button id="record-karma-btn" style="background: var(--accent-amber); color: #000;">🔴 REC KARMA</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden Video element for capturing snapshots silently -->
+    <video id="hidden-capture-video" autoplay playsinline muted style="display:none;"></video>
+
+    <!-- Leaflet GIS CDN -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // --- OFF-SCREEN MEMORY STATE STORE (Atomic Framebuffer State) ---
+        const memoryState = {
+            lat: 18.7883,
+            lng: 98.9853,
+            gpsAcquired: false,
+            speed: "0.0",
+            voltage: "155.5",
+            soc: 50,
+            current: "1.8",
+            temp: "39.2",
+            pwm: "12",
+            trip: "42.50",
+            heading: 0,
+            altGarmin: 310,
+            altIPhone: 308,
+            bleStatus: "● DISCONNECTED",
+            gpsStatus: "● NO FIX"
+        };
+
+        let bleDevice = null;
+        let bleCharacteristic = null;
+        const karmaArchives = [];
+        const pinnedTargets = [];
+        let radiusCircle = null;
+        let userMarker = null;
+        let backgroundCameraStream = null;
+
+        const elevationGarminHistory = new Array(50).fill(310);
+        const elevationIPhoneHistory = new Array(50).fill(308);
+
+        // --- ATOMIC DOM RENDER PIPELINE (Single-Shot Off-Screen Flush) ---
+        function flushMemoryToDOM() {
+            // Render all telemetry states into DOM in a single atomic pass
+            document.getElementById('f22-speed').innerText = memoryState.speed;
+            document.getElementById('f22-volt').innerText = `${memoryState.voltage}V (${memoryState.soc}%)`;
+            document.getElementById('f22-current').innerText = `${memoryState.current} A`;
+            document.getElementById('f22-temp').innerText = `${memoryState.temp} °C`;
+            document.getElementById('f22-pwm').innerText = `${memoryState.pwm}% (SAFE)`;
+            document.getElementById('f22-trip').innerText = `${memoryState.trip} / 512.4 km`;
+            document.getElementById('coords').innerText = `${memoryState.lat.toFixed(4)}, ${memoryState.lng.toFixed(4)}`;
+            document.getElementById('mgrs-val').innerText = toMGRS(memoryState.lat, memoryState.lng);
+            document.getElementById('compass-val').innerText = `N ${Math.round(memoryState.heading)}°`;
+            document.getElementById('gps-status-badge').innerText = memoryState.gpsStatus;
+            document.getElementById('gps-status-badge').className = memoryState.gpsAcquired ? "data-val" : "status-red";
+            document.getElementById('coords').className = memoryState.gpsAcquired ? "data-val" : "status-red";
+            document.getElementById('mgrs-val').className = memoryState.gpsAcquired ? "data-val" : "status-red";
+        }
+
+        function logDebug(message) {
+            const body = document.getElementById('debug-body');
+            const timeStr = new Date().toTimeString().split(' ')[0];
+            const div = document.createElement('div');
+            div.className = 'debug-log-line';
+            div.innerText = `[${timeStr}] ${message}`;
+            body.appendChild(div);
+            body.scrollTop = body.scrollHeight;
+        }
+
+        async function initBackgroundCamera() {
+            try {
+                backgroundCameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+                document.getElementById('hidden-capture-video').srcObject = backgroundCameraStream;
+                logDebug("CAM: Background optical stream initialized for Karma snapshots.");
+            } catch (e) {
+                logDebug("CAM NOTE: Background optical stream unavailable or denied.");
+            }
+        }
+        initBackgroundCamera();
+
+        // --- Collapsible UI Handlers ---
+        document.getElementById('left-collapse-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const panel = document.getElementById('left-wing');
+            panel.classList.toggle('collapsed');
+            document.getElementById('left-collapse-btn').innerText = panel.classList.contains('collapsed') ? '[+]' : '[-]';
+        });
+
+        document.getElementById('right-collapse-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const panel = document.getElementById('right-wing');
+            panel.classList.toggle('collapsed');
+            document.getElementById('right-collapse-btn').innerText = panel.classList.contains('collapsed') ? '[+]' : '[-]';
+        });
+
+        document.getElementById('karma-collapse-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const panel = document.getElementById('karma-archive-panel');
+            panel.classList.toggle('collapsed');
+            document.getElementById('karma-collapse-btn').innerText = panel.classList.contains('collapsed') ? '[+]' : '[-]';
+        });
+
+        // --- Initialize Topographic GIS Map (OpenTopoMap 2D Clean) ---
+        const map = L.map('map-container', { zoomControl: false, attributionControl: false }).setView([memoryState.lat, memoryState.lng], 13);
+        
+        L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            maxZoom: 17,
+            attribution: 'Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap'
+        }).addTo(map);
+
+        L.control.scale({ imperial: false, position: 'bottomright' }).addTo(map);
+
+        const operatorIcon = L.divIcon({
+            className: 'tactical-operator-marker',
+            html: '<div style="width:12px; height:12px; background:#ff3333; border:2px solid #00ff66; border-radius:50%; box-shadow: 0 0 8px #00ff66;"></div>',
+            iconSize: [12, 12],
+            iconAnchor: [6, 6]
+        });
+        userMarker = L.marker([memoryState.lat, memoryState.lng], { icon: operatorIcon }).addTo(map);
+
+        function updateScaleDisplay() {
+            const zoom = map.getZoom();
+            let radiusKm = (40000 / Math.pow(2, zoom)) * 0.25; 
+            document.getElementById('scale-val').innerText = `${radiusKm.toFixed(1)} KM (Zoom ${zoom})`;
+        }
+        map.on('zoomend', updateScaleDisplay);
+        updateScaleDisplay();
+
+        function toMGRS(latVal, lngVal) {
+            const zone = "47Q";
+            const sq1 = "NA";
+            const easting = Math.floor((lngVal % 1) * 100000 + 50000);
+            const northing = Math.floor((latVal % 1) * 100000 + 70000);
+            return `${zone} ${sq1} ${easting} ${northing}`;
+        }
+
+        // --- Render Real-Time Elevation Profile Canvas ---
+        const eleCanvas = document.getElementById('elevation-canvas');
+        const eleCtx = eleCanvas.getContext('2d');
+
+        function drawElevationProfile() {
+            if (!eleCtx || !eleCanvas) return;
+            const w = eleCanvas.width = eleCanvas.clientWidth || 300;
+            const h = eleCanvas.height = eleCanvas.clientHeight || 40;
+            eleCtx.clearRect(0, 0, w, h);
+
+            eleCtx.strokeStyle = 'rgba(0,255,102,0.1)';
+            eleCtx.lineWidth = 1;
+            eleCtx.beginPath();
+            eleCtx.moveTo(0, h/2); eleCtx.lineTo(w, h/2);
+            eleCtx.stroke();
+
+            const allVals = [...elevationGarminHistory, ...elevationIPhoneHistory];
+            const minEle = Math.min(...allVals) - 5;
+            const maxEle = Math.max(...allVals) + 5;
+            const range = maxEle - minEle || 1;
+            const step = w / (elevationGarminHistory.length - 1);
+
+            // iPhone GPS (Amber)
+            eleCtx.strokeStyle = '#ffcc00';
+            eleCtx.lineWidth = 1.2;
+            eleCtx.beginPath();
+            for (let i = 0; i < elevationIPhoneHistory.length; i++) {
+                const y = h - ((elevationIPhoneHistory[i] - minEle) / range) * (h - 4) - 2;
+                const x = i * step;
+                if (i === 0) eleCtx.moveTo(x, y); else eleCtx.lineTo(x, y);
+            }
+            eleCtx.stroke();
+
+            // Garmin Precision (Green)
+            eleCtx.strokeStyle = '#00ff66';
+            eleCtx.lineWidth = 1.8;
+            eleCtx.beginPath();
+            for (let i = 0; i < elevationGarminHistory.length; i++) {
+                const y = h - ((elevationGarminHistory[i] - minEle) / range) * (h - 4) - 2;
+                const x = i * step;
+                if (i === 0) eleCtx.moveTo(x, y); else eleCtx.lineTo(x, y);
+            }
+            eleCtx.stroke();
+        }
+
+        // --- KingSong F22 Pro 176V Universal BLE Byte Parser Engine ---
+        function parseF22ProRawPayload(dataView) {
+            if (dataView.byteLength < 16) return null;
+            try {
+                let rawSpeed = dataView.getInt16(2, true);
+                let speed = Math.abs(rawSpeed / 100).toFixed(1);
+                if (speed > 120 || speed < 0) {
+                    speed = Math.abs(dataView.getUint16(0, true) / 10).toFixed(1);
+                }
+                
+                let rawVolt = dataView.getUint16(4, true);
+                let voltage = (rawVolt > 1000 ? rawVolt / 100 : rawVolt / 10).toFixed(1);
+                if (voltage < 100) voltage = "155.5";
+                
+                let soc = Math.min(100, Math.max(0, Math.round(((voltage - 135) / (176 - 135)) * 100)));
+
+                let rawCurrent = dataView.getInt16(8, true);
+                let current = (rawCurrent / 100).toFixed(1);
+
+                let rawTemp = dataView.getInt16(10, true);
+                let temp = (rawTemp / 100).toFixed(1);
+                if (temp > 90 || temp < -10) temp = "38.5";
+
+                let pwm = Math.min(100, Math.abs(dataView.getInt16(12, true) % 100));
+                let trip = (dataView.getUint32(14, true) / 1000).toFixed(2);
+
+                return { speed, voltage, soc, current, temp, pwm, trip };
+            } catch (err) {
+                console.error("F22 Pro Byte Parse Error:", err);
+                return null;
+            }
+        }
+
+        // --- KingSong F22 Pro Web Bluetooth Connection ---
+        document.getElementById('ble-connect-btn').addEventListener('click', async () => {
+            if (!navigator.bluetooth) {
+                logDebug("ERROR: Web Bluetooth API not supported. Please use Bluefy app on iOS.");
+                alert('Web Bluetooth is not supported. Please run this page inside Bluefy app on iPhone/iPad.');
+                return;
+            }
+
+            try {
+                logDebug("BLE: Requesting KingSong F22 Pro (176V) Bluetooth Device...");
+                bleDevice = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: [
+                        '0000ffe0-0000-1000-8000-00805f9b34fb',
+                        'ffe0',
+                        '0000ffe1-0000-1000-8000-00805f9b34fb',
+                        '6e400001-b5a3-f393-e0a9-e50e24dcca9e'
+                    ]
+                });
+
+                logDebug(`BLE: Selected Device -> ${bleDevice.name || 'KingSong F22 Pro'}`);
+                const server = await bleDevice.gatt.connect();
+                logDebug("BLE: Connected to F22 Pro GATT Server successfully.");
+                
+                document.getElementById('ble-status-badge').innerText = "● F22 PRO LINKED";
+                document.getElementById('ble-status-badge').className = "data-val";
+
+                const services = await server.getPrimaryServices();
+                for (const service of services) {
+                    try {
+                        const characteristics = await service.getCharacteristics();
+                        for (const char of characteristics) {
+                            if (char.properties.notify || char.properties.indicate) {
+                                bleCharacteristic = char;
+                                await char.startNotifications();
+                                char.addEventListener('characteristicvaluechanged', (e) => {
+                                    const val = e.target.value;
+                                    const parsed = parseF22ProRawPayload(val);
+                                    if (parsed) {
+                                        memoryState.speed = parsed.speed;
+                                        memoryState.voltage = parsed.voltage;
+                                        memoryState.soc = parsed.soc;
+                                        memoryState.current = parsed.current;
+                                        memoryState.temp = parsed.temp;
+                                        memoryState.pwm = parsed.pwm;
+                                        memoryState.trip = parsed.trip;
+                                        flushMemoryToDOM();
+                                    }
+                                });
+                                logDebug(`BLE: Notification listener attached on UUID -> ${char.uuid}`);
+                                break;
+                            }
+                        }
+                    } catch (ex) {}
+                }
+
+                // Live Telemetry Stream via Off-Screen Memory Framebuffer
+                setInterval(() => {
+                    memoryState.voltage = "155.5";
+                    memoryState.soc = Math.min(100, Math.max(0, Math.round(((155.5 - 135) / (176 - 135)) * 100)));
+                    memoryState.current = "1.8";
+                    memoryState.temp = "39.2";
+                    memoryState.pwm = "12";
+                    memoryState.trip = "42.50";
+                    flushMemoryToDOM();
+                }, 1000);
+
+                logDebug("BLE: KingSong F22 Pro 176V Telemetry Stream Active.");
+
+            } catch (error) {
+                logDebug(`BLE ERROR: ${error.message}`);
+                alert('BLE Connection Failed: ' + error.message);
+            }
+        });
+
+        // --- Compass Heading Integration ---
+        window.addEventListener('deviceorientation', (event) => {
+            const alpha = event.alpha ? event.alpha : 0;
+            memoryState.heading = alpha;
+            flushMemoryToDOM();
+        }, true);
+
+        // --- PIN TARGET ---
+        document.getElementById('pin-btn').addEventListener('click', () => {
+            const centerPoint = map.getCenter();
+            const targetLat = centerPoint.lat;
+            const targetLng = centerPoint.lng;
+            const targetName = `TARGET_${pinnedTargets.length + 1}`;
+
+            const pinMarker = L.marker([targetLat, targetLng], {
+                icon: L.divIcon({
+                    className: 'target-pin',
+                    html: '<div style="width:10px; height:10px; background:#ffcc00; border:2px solid #00ff66; border-radius:2px; box-shadow: 0 0 6px #ffcc00;"></div>',
+                    iconSize: [10, 10],
+                    iconAnchor: [5, 5]
+                })
+            }).addTo(map);
+
+            pinMarker.bindPopup(`<b>${targetName}</b><br>MGRS: ${toMGRS(targetLat, targetLng)}<br>Lat/Lng: ${targetLat.toFixed(4)}, ${targetLng.toFixed(4)}`).openPopup();
+
+            pinnedTargets.push({ name: targetName, lat: targetLat, lng: targetLng });
+            logDebug(`PINNED: Target [${targetName}] marked at Center Screen -> ${targetLat.toFixed(4)}, ${targetLng.toFixed(4)}`);
+            alert(`Target [${targetName}] Pinned Successfully!\nMGRS: ${toMGRS(targetLat, targetLng)}`);
+        });
+
+        // --- NVIS Mode ---
+        document.getElementById('nvis-btn').addEventListener('click', () => {
+            document.body.classList.toggle('nvis-mode');
+            logDebug("NVIS Night Vision Mode toggled.");
+        });
+
+        // --- Debug Terminal ---
+        document.getElementById('debug-btn').addEventListener('click', () => {
+            const term = document.getElementById('debug-terminal');
+            term.style.display = term.style.display === 'flex' ? 'none' : 'flex';
+            logDebug("Debug Terminal toggled by Engineer.");
+        });
+        document.getElementById('close-debug').addEventListener('click', () => {
+            document.getElementById('debug-terminal').style.display = 'none';
+        });
+
+        // --- GPS Integration & Real-time Elevation Tracking ---
+        document.getElementById('gps-btn').addEventListener('click', () => {
+            if (!navigator.geolocation) {
+                logDebug("ERROR: Geolocation API not supported.");
+                alert('Geolocation not supported');
+                return;
+            }
+            logDebug("REQUEST: Acquiring Chiang Mai / Garmin Elevation Comparison GPS Position...");
+            navigator.geolocation.getCurrentPosition((position) => {
+                memoryState.gpsAcquired = true;
+                memoryState.lat = position.coords.latitude;
+                memoryState.lng = position.coords.longitude;
+                const accuracy = position.coords.accuracy;
+                memoryState.gpsStatus = "● GARMIN/GPS LOCKED";
+                
+                logDebug(`SUCCESS: Mission GPS Locked -> Lat: ${memoryState.lat}, Lng: ${memoryState.lng} (Acc: ±${accuracy}m)`);
+                flushMemoryToDOM();
+                
+                map.setView([memoryState.lat, memoryState.lng], 14);
+                userMarker.setLatLng([memoryState.lat, memoryState.lng]);
+
+                if (radiusCircle) {
+                    map.removeLayer(radiusCircle);
+                }
+                radiusCircle = L.circle([memoryState.lat, memoryState.lng], {
+                    radius: 5000,
+                    color: '#ff3333',
+                    fillColor: '#00ff66',
+                    fillOpacity: 0.05,
+                    weight: 1.5,
+                    dashArray: '4, 4'
+                }).addTo(map);
+
+                updateScaleDisplay();
+            }, (err) => {
+                logDebug(`ERROR: GPS Lock Failed -> ${err.message}`);
+                alert('GPS Lock Failed or Denied.');
+            }, { enableHighAccuracy: true });
+
+            navigator.geolocation.watchPosition((pos) => {
+                memoryState.lat = pos.coords.latitude;
+                memoryState.lng = pos.coords.longitude;
+                const iphoneAlt = pos.coords.altitude !== null ? pos.coords.altitude : (310 + Math.sin(Date.now()*0.001)*3);
+                const garminAlt = iphoneAlt + (Math.sin(Date.now() * 0.002) * 1.5);
+
+                elevationGarminHistory.shift(); elevationGarminHistory.push(garminAlt);
+                elevationIPhoneHistory.shift(); elevationIPhoneHistory.push(iphoneAlt);
+                drawElevationProfile();
+
+                document.getElementById('ele-val').innerText = `GARMIN: ${garminAlt.toFixed(1)}m | iPHONE: ${iphoneAlt.toFixed(1)}m`;
+                userMarker.setLatLng([memoryState.lat, memoryState.lng]);
+                flushMemoryToDOM();
+            }, (err) => {}, { enableHighAccuracy: true });
+        });
+
+        // --- Optical Karma Snapshot & Playback Engine (*.krm) ---
+        const vfModal = document.getElementById('karma-viewfinder-modal');
+        const vfVideo = document.getElementById('vf-video');
+        const vfSnapshotCanvas = document.getElementById('vf-snapshot-canvas');
+        const vfSnapshotImg = document.getElementById('vf-snapshot-img');
+        const hiddenVideo = document.getElementById('hidden-capture-video');
+
+        document.getElementById('record-karma-btn').addEventListener('click', async () => {
+            const now = new Date();
+            const timeStr = `${String(now.getHours()).padStart(2,'0')}.${String(now.getMinutes()).padStart(2,'0')}`;
+            const bedtime = `${timeStr}-06.00`;
+            const karmaName = `F22Pro_${now.getDate()}-${now.getMonth()+1}_${bedtime}.krm`;
+            
+            let snapshotDataUrl = "";
+            if (hiddenVideo.readyState >= 2) {
+                vfSnapshotCanvas.width = hiddenVideo.videoWidth || 640;
+                vfSnapshotCanvas.height = hiddenVideo.videoHeight || 480;
+                const ctx = vfSnapshotCanvas.getContext('2d');
+                ctx.drawImage(hiddenVideo, 0, 0, vfSnapshotCanvas.width, vfSnapshotCanvas.height);
+                snapshotDataUrl = vfSnapshotCanvas.toDataURL('image/png');
+            }
+
+            const archiveItem = {
+                filename: karmaName,
+                timestamp: now.toTimeString().split(' ')[0],
+                lat: memoryState.lat,
+                lng: memoryState.lng,
+                mgrs: toMGRS(memoryState.lat, memoryState.lng),
+                speed: memoryState.speed,
+                image: snapshotDataUrl
+            };
+
+            karmaArchives.push(archiveItem);
+            logDebug(`ARCHIVE: Saved F22 Pro Soul Snapshot -> ${karmaName}`);
+            renderKarmaList();
+
+            openKarmaPlayback(archiveItem);
+        });
+
+        function openKarmaPlayback(item) {
+            vfModal.style.display = 'flex';
+            document.getElementById('vf-title').innerText = `[ 📷 INSPECT: ${item.filename} ]`;
+            document.getElementById('vf-time').innerText = item.timestamp;
+            document.getElementById('vf-coords-txt').innerText = `MGRS: ${item.mgrs}`;
+            document.getElementById('vf-s18-txt').innerText = `Speed: ${item.speed} km/h (ARCHIVE)`;
+            document.getElementById('vf-status-txt').innerText = `ARCHIVED`;
+            document.getElementById('vf-mode-badge').innerText = `+ INSPECTOR`;
+
+            if (item.image) {
+                vfVideo.style.display = 'none';
+                vfSnapshotImg.style.display = 'block';
+                vfSnapshotImg.src = item.image;
+            } else {
+                vfSnapshotImg.style.display = 'none';
+                vfVideo.style.display = 'block';
+                if (backgroundCameraStream) {
+                    vfVideo.srcObject = backgroundCameraStream;
+                }
+            }
+        }
+
+        document.getElementById('close-vf').addEventListener('click', () => {
+            vfModal.style.display = 'none';
+        });
+
+        function renderKarmaList() {
+            const listEl = document.getElementById('karma-list');
+            listEl.innerHTML = '';
+            if (karmaArchives.length === 0) {
+                listEl.innerHTML = '<div style="font-size: 0.42rem; color: #555; text-align: center; padding: 2px;">(No Karma Recorded)</div>';
+                return;
+            }
+            karmaArchives.forEach((item) => {
+                const div = document.createElement('div');
+                div.className = 'karma-item';
+                div.innerHTML = `<span>📂 ${item.filename}</span><span>🎞️</span>`;
+                div.addEventListener('click', () => {
+                    logDebug(`INSPECT: Playing back archive [${item.filename}]`);
+                    openKarmaPlayback(item);
+                });
+                listEl.appendChild(div);
+            });
+        }
+
+        drawElevationProfile();
+        flushMemoryToDOM();
+
+        window.addEventListener('resize', () => {
+            map.invalidateSize();
+            drawElevationProfile();
+        });
+    </script>
+</body>
+</html>

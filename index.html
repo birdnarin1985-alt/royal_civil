@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum OS (Voxel OS) - Brahma-Vihara 4 National Sovereign HUD</title>
+    <style>
+        :root {
+            --bg-color: #03050c;
+            --card-bg: rgba(10, 15, 30, 0.92);
+            --accent: #10b981;
+            --accent-glow: rgba(16, 185, 129, 0.6);
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --rescue: #f97316;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --border: rgba(255, 255, 255, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        header {
+            padding: 12px;
+            text-align: center;
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        h1 {
+            font-size: 0.88rem;
+            letter-spacing: 1px;
+            color: var(--accent);
+            text-transform: uppercase;
+        }
+
+        .container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 12px;
+            gap: 10px;
+            max-width: 600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Cockpit Viewport & Brahma-Vihara Field */
+        .viewport-card {
+            position: relative;
+            width: 100%;
+            height: 210px;
+            background: #000;
+            border-radius: 14px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+            transition: box-shadow 0.4s ease, border 0.4s ease;
+        }
+
+        .viewport-card.metta-active {
+            border: 2px solid var(--accent);
+            box-shadow: 0 0 25px var(--accent-glow), inset 0 0 15px var(--accent-glow);
+        }
+
+        .viewport-card.karuna-active {
+            border: 2px solid var(--rescue);
+            box-shadow: 0 0 25px rgba(249, 115, 22, 0.6), inset 0 0 15px rgba(249, 115, 22, 0.6);
+        }
+
+        #videoElement {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+
+        .hud-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 10px;
+        }
+
+        .hud-header, .hud-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .badge {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            padding: 4px 8px;
+            border-radius: 16px;
+            font-size: 0.66rem;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--danger);
+            transition: background 0.3s;
+        }
+
+        .status-dot.active {
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent-glow);
+        }
+
+        /* Radar & 6-Axis Vector Box */
+        .radar-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90px;
+            height: 90px;
+            border: 2px dashed rgba(16, 185, 129, 0.5);
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            animation: pulse-radar 3s infinite linear;
+            background: rgba(16, 185, 129, 0.04);
+        }
+
+        @keyframes pulse-radar {
+            0% { transform: translate(-50%, -50%) scale(0.96); opacity: 0.6; }
+            50% { transform: translate(-50%, -50%) scale(1.04); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(0.96); opacity: 0.6; }
+        }
+
+        .radar-distance-text {
+            font-size: 0.68rem;
+            font-weight: 800;
+            color: var(--accent);
+            background: rgba(0,0,0,0.85);
+            padding: 2px 5px;
+            border-radius: 5px;
+            margin-top: 2px;
+            font-variant-numeric: tabular-nums;
+            border: 1px solid var(--border);
+        }
+
+        /* Telemetry Grid */
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 8px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            opacity: 0.4;
+        }
+
+        .card-title {
+            font-size: 0.64rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .card-value {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--accent);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .unit {
+            font-size: 0.68rem;
+            color: var(--text-muted);
+            font-weight: normal;
+        }
+
+        .battery-bar-container {
+            width: 100%;
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            margin-top: 3px;
+            overflow: hidden;
+        }
+
+        .battery-bar-fill {
+            height: 100%;
+            width: 88.5%;
+            background: var(--accent);
+            transition: width 0.3s ease;
+        }
+
+        /* Wave Sparkline & Telemetry Panel */
+        .info-panel {
+            background: rgba(3, 7, 18, 0.8);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 8px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.66rem;
+            color: var(--text-muted);
+        }
+
+        canvas {
+            width: 100%;
+            height: 26px;
+            display: block;
+        }
+
+        /* Action Buttons */
+        .btn-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #059669, #10b981);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 10px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 3px 10px rgba(16, 185, 129, 0.3);
+        }
+
+        button:active {
+            transform: scale(0.97);
+        }
+
+        button.secondary {
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            box-shadow: none;
+        }
+
+        button.karuna-btn {
+            background: linear-gradient(135deg, #c2410c, #f97316);
+            box-shadow: 0 3px 10px rgba(249, 115, 22, 0.3);
+        }
+
+        button.danger {
+            background: linear-gradient(135deg, #dc2626, #ef4444);
+            box-shadow: 0 3px 10px rgba(239, 68, 68, 0.3);
+        }
+
+        button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* Drive Test Pad */
+        .drive-pad {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 7px;
+        }
+
+        .drive-btn {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 8px;
+            border-radius: 9px;
+            font-weight: 700;
+            font-size: 0.75rem;
+            text-align: center;
+            cursor: pointer;
+            box-shadow: none;
+        }
+
+        .drive-btn:active {
+            background: var(--accent);
+            color: #000;
+        }
+
+        .log-console {
+            background: #02040a;
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            padding: 7px 9px;
+            font-family: "Courier New", Courier, monospace;
+            font-size: 0.65rem;
+            color: #34d399;
+            height: 55px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Quantum OS // Brahma-Vihara 4 Sovereign HUD</h1>
+    </header>
+
+    <div class="container">
+        <!-- Cockpit Viewport & Brahma-Vihara Field -->
+        <div class="viewport-card metta-active" id="viewportCard">
+            <video id="videoElement" autoplay playsinline muted></video>
+            <div class="radar-box" id="radarBox">
+                <span style="font-size:0.48rem; color:var(--text-muted); text-transform:uppercase;">6-Axis Z-G</span>
+                <span class="radar-distance-text" id="gForceText">1.00 G</span>
+            </div>
+            <div class="hud-overlay">
+                <div class="hud-header">
+                    <div class="badge">
+                        <div id="statusDot" class="status-dot"></div>
+                        <span id="connectionStatus">DISCONNECTED</span>
+                    </div>
+                    <div class="badge" id="viharaBadge" style="color:var(--accent);">VIRTUE: METTA (เมตตา)</div>
+                </div>
+                <div class="hud-footer">
+                    <div class="badge" id="cameraModeBadge">CAM: COCKPIT</div>
+                    <div class="badge" id="potholeCountBadge">ROADS: 0 Potholes</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Telemetry Data Cards (6-Axis & F22 Pro Metrics) -->
+        <div class="control-grid">
+            <div class="card">
+                <span class="card-title">IMU Pitch (6-Axis) <span style="color:var(--accent);">● LIVE</span></span>
+                <span class="card-value" id="imuPitchValue">0.00 <span class="unit">°</span></span>
+            </div>
+            <div class="card">
+                <span class="card-title">IMU Roll (Bank) <span style="color:var(--accent);">● LIVE</span></span>
+                <span class="card-value" id="imuRollValue">0.00 <span class="unit">°</span></span>
+            </div>
+            <div class="card">
+                <span class="card-title">King Song F22 RPM <span style="color:var(--warning);">● F22 PRO</span></span>
+                <span class="card-value" id="rpmValue" style="color:var(--warning);">0 <span class="unit">RPM</span></span>
+            </div>
+            <div class="card">
+                <span class="card-title">Graphene Battery <span style="color:var(--accent);">● CELL</span></span>
+                <span class="card-value" id="batteryValue">88.5 <span class="unit">% (84.2V)</span></span>
+                <div class="battery-bar-container">
+                    <div class="battery-bar-fill" id="batteryBarFill"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wave Sparkline & Bandwidth Meter -->
+        <div class="info-panel">
+            <div class="info-row">
+                <span id="waveTitle">6-Axis Vibration Waveform (Z-Accel)</span>
+                <span id="bandwidthMeter" style="color:var(--accent);">TX: 0.0 KB/s | RX: 0.0 KB/s</span>
+            </div>
+            <canvas id="waveCanvas"></canvas>
+        </div>
+
+        <!-- Drive Test Pad (F22 Pro Actuation) -->
+        <div class="drive-pad" id="drivePadContainer">
+            <button class="drive-btn" id="btnForward" disabled>▲ เดินหน้าด้วยเมตตา (FWD)</button>
+            <button class="drive-btn" id="btnBackward" disabled>▼ ถอยหลังด้วยสติ (BWD)</button>
+        </div>
+
+        <!-- Brahma-Vihara 4 National Sovereign Action Buttons (Fully Wired) -->
+        <div class="btn-stack">
+            <button id="connectBtn">🌐 [เมตตา] เชื่อมต่อเครือข่ายตาข่าย Indra's Net (เกื้อกูลผู้ใช้)</button>
+            <button id="sensorStreamBtn" class="secondary">📡 [โยนิโสมนสิการ] เปิดเซนเซอร์ 6 แกน (รู้เท่าทันสภาพทาง)</button>
+            <button id="rescueModeBtn" class="karuna-btn" disabled>🚨 [กรุณา] เปิดโหมดกู้ภัย & ลาดตระเวนช่วยเหลือ (บรรเทาทุกข์)</button>
+            <button id="cameraToggleBtn" class="secondary">🔄 [มุทิตา] สลับกล้อง & สำรวจผิวถนน (แบ่งปันข้อมูลสาธารณะ)</button>
+            <button id="emergencyBtn" class="danger">⚖️ [อุเบกขา] ฉุกเฉิน / ล็อกเบรก F22 & กล่องดำ (ความเที่ยงธรรมสูงสุด)</button>
+        </div>
+
+        <!-- Terminal Log Console -->
+        <div class="log-console" id="logConsole">
+            [Quantum OS Core]: Brahma-Vihara 4 Sovereign HUD online.<br>
+            [Indra's Net]: Guided by Metta, Karuna, Mudita, Upekkha & Yonisomanasikara...<br>
+        </div>
+    </div>
+
+    <script>
+        const videoElement = document.getElementById('videoElement');
+        const viewportCard = document.getElementById('viewportCard');
+        const connectBtn = document.getElementById('connectBtn');
+        const sensorStreamBtn = document.getElementById('sensorStreamBtn');
+        const rescueModeBtn = document.getElementById('rescueModeBtn');
+        const cameraToggleBtn = document.getElementById('cameraToggleBtn');
+        const emergencyBtn = document.getElementById('emergencyBtn');
+        const btnForward = document.getElementById('btnForward');
+        const btnBackward = document.getElementById('btnBackward');
+        const statusDot = document.getElementById('statusDot');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const viharaBadge = document.getElementById('viharaBadge');
+        const cameraModeBadge = document.getElementById('cameraModeBadge');
+        const potholeCountBadge = document.getElementById('potholeCountBadge');
+        const waveTitle = document.getElementById('waveTitle');
+        
+        const imuPitchValue = document.getElementById('imuPitchValue');
+        const imuRollValue = document.getElementById('imuRollValue');
+        const gForceText = document.getElementById('gForceText');
+        const rpmValue = document.getElementById('rpmValue');
+        const batteryValue = document.getElementById('batteryValue');
+        const batteryBarFill = document.getElementById('batteryBarFill');
+        const bandwidthMeter = document.getElementById('bandwidthMeter');
+        const logConsole = document.getElementById('logConsole');
+        
+        const canvas = document.getElementById('waveCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let bluetoothDevice = null;
+        let bluetoothCharacteristic = null;
+        let isConnected = false;
+        let isSensorStreamActive = false;
+        let isKarunaMode = false;
+        let currentFacingMode = 'user';
+        let potholeDetectedCount = 0;
+        let flightBlackboxLog = [];
+        
+        let rawPitch = 0, rawRoll = 0, rawZAccel = 1.0;
+        const waveData = new Array(60).fill(1.0);
+        let txBytes = 0;
+        let rxBytes = 0;
+
+        function log(msg) {
+            const time = new Date().toLocaleTimeString();
+            logConsole.innerHTML += `[${time}] ${msg}<br>`;
+            logConsole.scrollTop = logConsole.scrollHeight;
+            flightBlackboxLog.push(`[${time}] ${msg}`);
+        }
+
+        // --- 1. [โยนิโสมนสิการ] 6-Axis Sensor Stream (รู้เท่าทันกายและสภาพถนน) ---
+        function init6AxisSensors() {
+            if (window.DeviceOrientationEvent) {
+                window.addEventListener('deviceorientation', (event) => {
+                    rawPitch = event.beta ? event.beta.toFixed(2) : 0;
+                    rawRoll = event.gamma ? event.gamma.toFixed(2) : 0;
+                    imuPitchValue.innerHTML = `${rawPitch} <span class="unit">°</span>`;
+                    imuRollValue.innerHTML = `${rawRoll} <span class="unit">°</span>`;
+                });
+            }
+
+            if (window.DeviceMotionEvent) {
+                window.addEventListener('devicemotion', (event) => {
+                    if (event.accelerationIncludingGravity) {
+                        const z = event.accelerationIncludingGravity.z;
+                        rawZAccel = z ? (z / 9.81).toFixed(2) : 1.00;
+                        gForceText.textContent = `${rawZAccel} G`;
+
+                        if (Math.abs(rawZAccel) > 1.45 || Math.abs(rawZAccel) < 0.65) {
+                            potholeDetectedCount++;
+                            potholeCountBadge.textContent = `ROADS: ${potholeDetectedCount} Potholes logged`;
+                            log(`[โยนิโสมนสิการ - ตรวจพบหลุมบ่อ]: พื้นผิวขรุขระ บันทึกพิกัดเกื้อกูลหลวง Z-G: ${rawZAccel}G`);
+                        }
+                    }
+                });
+                log("6-Axis IMU Sensors activated with mindful awareness.");
+            } else {
+                log("Notice: DeviceMotion fallback active.");
+            }
+        }
+
+        sensorStreamBtn.addEventListener('click', () => {
+            isSensorStreamActive = !isSensorStreamActive;
+            if (isSensorStreamActive) {
+                if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                    DeviceMotionEvent.requestPermission().then(res => {
+                        if (res === 'granted') {
+                            init6AxisSensors();
+                            sensorStreamBtn.textContent = "📡 [โยนิโส] ปิดเซนเซอร์ 6 แกน (Active)";
+                            sensorStreamBtn.style.background = "rgba(16, 185, 129, 0.3)";
+                        } else { alert("Permission denied."); }
+                    }).catch(console.error);
+                } else {
+                    init6AxisSensors();
+                    sensorStreamBtn.textContent = "📡 [โยนิโส] ปิดเซนเซอร์ 6 แกน (Active)";
+                    sensorStreamBtn.style.background = "rgba(16, 185, 129, 0.3)";
+                }
+            } else {
+                sensorStreamBtn.textContent = "📡 [โยนิโสมนสิการ] เปิดเซนเซอร์ 6 แกน (6-Axis Sensor Stream)";
+                sensorStreamBtn.style.background = "";
+                log("6-Axis stream paused.");
+            }
+        });
+
+        // --- 2. [มุทิตา] Camera Toggle & Pothole Inspector (ยินดีในความปลอดภัย แบ่งปันข้อมูลสาธารณะ) ---
+        async function initCamera(facingMode) {
+            try {
+                if (videoElement.srcObject) {
+                    videoElement.srcObject.getTracks().forEach(t => t.stop());
+                }
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+                    audio: false
+                });
+                videoElement.srcObject = stream;
+                if (facingMode === 'user') {
+                    videoElement.style.transform = 'scaleX(-1)';
+                    cameraModeBadge.textContent = "CAM: COCKPIT";
+                    log("[มุทิตา]: เปิดมุมมองกล้องห้องนักบิน (Cockpit View).");
+                } else {
+                    videoElement.style.transform = 'scaleX(1)';
+                    cameraModeBadge.textContent = "CAM: PUBLIC INSPECTOR";
+                    log("[มุทิตา - ประโยชน์สาธารณะ]: เปิดกล้องหลังส่องถนน สำรวจหลุมบ่อเกื้อกูลพี่น้องประชาชน.");
+                }
+            } catch (err) { log("Camera Error: " + err.message); }
+        }
+
+        cameraToggleBtn.addEventListener('click', () => {
+            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+            initCamera(currentFacingMode);
+            txBytes += 24;
+        });
+
+        // --- 3. [เมตตา] Bluetooth Connection F22 Pro / S18 (ความปรารถนาดี เกื้อกูลผู้ใช้และชาติ) ---
+        connectBtn.addEventListener('click', async () => {
+            try {
+                if (!navigator.bluetooth) {
+                    alert("Web Bluetooth not available. Use Bluefy Browser on iOS or Chrome on Android.");
+                    return;
+                }
+                log("[เมตตา]: เริ่มต้นเชื่อมต่อเครือข่ายตาข่าย Indra's Net ด้วยความปรารถนาดี...");
+                bluetoothDevice = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb', '49535343-fe7d-4ae5-8fa9-9fafd205e455']
+                });
+                log(`เชื่อมต่ออาชาศึก F22 Pro: ${bluetoothDevice.name || 'Sovereign EUC'}...`);
+                const server = await bluetoothDevice.gatt.connect();
+                let service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb').catch(() => null);
+                if (!service) { service = await server.getPrimaryService('49535343-fe7d-4ae5-8fa9-9fafd205e455').catch(() => null); }
+                if (service) { bluetoothCharacteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb').catch(() => null); }
+
+                isConnected = true;
+                statusDot.classList.add('active');
+                connectionStatus.textContent = "CONNECTED (METTA MESH)";
+                connectBtn.textContent = `เชื่อมต่อแล้วด้วยเมตตา: ${bluetoothDevice.name || 'F22 Pro'}`;
+                connectBtn.style.background = "rgba(16, 185, 129, 0.2)";
+                viewportCard.classList.add('metta-active');
+                rescueModeBtn.removeAttribute('disabled');
+                btnForward.removeAttribute('disabled');
+                btnBackward.removeAttribute('disabled');
+                log("[เมตตาบริบูรณ์]: เครือข่าย Indra's Net เชื่อมโยงสำเร็จ พร้อมเกื้อกูลผู้ใช้งาน!");
+
+                bluetoothDevice.addEventListener('gattserverdisconnected', handleDisconnect);
+            } catch (error) { log("Connection Cancelled: " + error); }
+        });
+
+        function handleDisconnect() {
+            isConnected = false;
+            isKarunaMode = false;
+            statusDot.classList.remove('active');
+            connectionStatus.textContent = "DISCONNECTED";
+            connectBtn.textContent = "🌐 [เมตตา] เชื่อมต่อเครือข่ายตาข่าย Indra's Net (เกื้อกูลผู้ใช้)";
+            connectBtn.style.background = "";
+            viewportCard.classList.remove('metta-active', 'karuna-active');
+            rescueModeBtn.setAttribute('disabled', 'true');
+            rescueModeBtn.textContent = "🚨 [กรุณา] เปิดโหมดกู้ภัย & ลาดตระเวนช่วยเหลือ (บรรเทาทุกข์)";
+            rescueModeBtn.style.background = "";
+            viharaBadge.textContent = "VIRTUE: METTA (เมตตา)";
+            viharaBadge.style.color = "var(--accent)";
+            btnForward.setAttribute('disabled', 'true');
+            btnBackward.setAttribute('disabled', 'true');
+            log("Device cleanly disconnected with mindful care.");
+        }
+
+        // --- 4. [กรุณา] Rescue Scout Mode (ความปรารถนาให้ผู้อื่นพ้นทุกข์ ลาดตระเวนช่วยเหลือ) ---
+        rescueModeBtn.addEventListener('click', () => {
+            isKarunaMode = !isKarunaMode;
+            if (isKarunaMode) {
+                viharaBadge.textContent = "VIRTUE: KARUNA (กรุณา - กู้ภัย)";
+                viharaBadge.style.color = "var(--rescue)";
+                viewportCard.classList.remove('metta-active');
+                viewportCard.classList.add('karuna-active');
+                rescueModeBtn.textContent = "🛡️ [กรุณา] ปิดโหมดกู้ภัย (กลับสู่ภาวะปกติ)";
+                rescueModeBtn.style.background = "linear-gradient(135deg, #059669, #10b981)";
+                log("[กรุณาธรรม]: เปิดโหมดกู้ภัยและลาดตระเวนช่วยเหลือผู้ประสบภัย นำทางส่งเสบียงด้วยใจเกื้อกูล!");
+                txBytes += 32;
+            } else {
+                viharaBadge.textContent = "VIRTUE: METTA (เมตตา)";
+                viharaBadge.style.color = "var(--accent)";
+                viewportCard.classList.remove('karuna-active');
+                viewportCard.classList.add('metta-active');
+                rescueModeBtn.textContent = "🚨 [กรุณา] เปิดโหมดกู้ภัย & ลาดตระเวนช่วยเหลือ (บรรเทาทุกข์)";
+                rescueModeBtn.style.background = "";
+                log("กลับสู่โหมดเมตตาปกติ.");
+            }
+        });
+
+        // --- Drive Actuation ---
+        btnForward.addEventListener('click', async () => {
+            log("[ขับเคลื่อนด้วยเมตตา]: ส่งคำสั่งเดินหน้า F22 Pro (+RPM)");
+            txBytes += 16;
+            if (isConnected && bluetoothCharacteristic) {
+                try { await bluetoothCharacteristic.writeValue(new TextEncoder().encode("FWD\n")); } catch (e) { log("Write Err: " + e); }
+            }
+        });
+
+        btnBackward.addEventListener('click', async () => {
+            log("[ขับเคลื่อนด้วยสติ]: ส่งคำสั่งถอยหลัง F22 Pro (-RPM)");
+            txBytes += 16;
+            if (isConnected && bluetoothCharacteristic) {
+                try { await bluetoothCharacteristic.writeValue(new TextEncoder().encode("BWD\n")); } catch (e) { log("Write Err: " + e); }
+            }
+        });
+
+        // --- 5. [อุเบกขา] Emergency Blackbox & Kill Switch (ความเที่ยงธรรม วางใจเป็นกลาง ป้องกันภัยสูงสุด) ---
+        emergencyBtn.addEventListener('click', () => {
+            log("[อุเบกขาธรรม - ความเที่ยงธรรมและปลอดภัยสูงสุด]: ล็อกเบรก F22 และบันทึกกล่องดำ (Blackbox)!");
+            const snapshot = {
+                timestamp: new Date().toISOString(),
+                totalPotholes: potholeDetectedCount,
+                virtueState: "Brahma-Vihara 4 Active",
+                history: flightBlackboxLog.slice(-10)
+            };
+            console.log("Sovereign Brahma-Vihara Blackbox:", snapshot);
+
+            if (bluetoothDevice && bluetoothDevice.gatt.connected) {
+                try {
+                    if (bluetoothCharacteristic) { bluetoothCharacteristic.writeValue(new TextEncoder().encode("STOP\n")); }
+                    bluetoothDevice.gatt.disconnect();
+                } catch (e) { console.error(e); }
+            }
+            handleDisconnect();
+            alert("⚖ [อุเบกขา]: ตัดการเชื่อมต่ออย่างสะอาด ปลอดภัย และบันทึกกล่องดำตามหลักธรรมาภิบาลเรียบร้อยแล้ว!");
+        });
+
+        // Telemetry Engine Loop
+        function startLiveTelemetryEngine() {
+            setInterval(() => {
+                const now = Date.now() / 200;
+                const mockRpm = isConnected ? (isKarunaMode ? Math.floor(70 + Math.sin(now * 3) * 45) : Math.floor(50 + Math.sin(now * 2) * 35)) : 0;
+                const mockBatt = (88.5 - (Date.now() % 1000000) / 800000).toFixed(1);
+                const mockVolt = (84.2 - ((88.5 - mockBatt) * 0.5)).toFixed(1);
+
+                rpmValue.innerHTML = `${mockRpm} <span class="unit">RPM</span>`;
+                batteryValue.innerHTML = `${mockBatt} <span class="unit">% (${mockVolt}V)</span>`;
+                batteryBarFill.style.width = `${mockBatt}%`;
+
+                if (isConnected) { rxBytes += 64; }
+                bandwidthMeter.textContent = `TX: ${(txBytes/1024).toFixed(1)} KB/s | RX: ${(rxBytes/1024).toFixed(1)} KB/s`;
+                txBytes = Math.max(0, txBytes - 4);
+                rxBytes = Math.max(0, rxBytes - 16);
+
+                waveData.shift();
+                waveData.push(parseFloat(rawZAccel));
+                drawWaveform();
+            }, 50);
+        }
+
+        function drawWaveform() {
+            canvas.width = canvas.parentElement.clientWidth - 20;
+            canvas.height = 26;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.beginPath();
+            ctx.strokeStyle = isKarunaMode ? '#f97316' : '#10b981';
+            ctx.lineWidth = 2;
+
+            const sliceWidth = canvas.width / waveData.length;
+            let x = 0;
+            for (let i = 0; i < waveData.length; i++) {
+                const v = waveData[i];
+                const y = (canvas.height / 2) + ((v - 1.0) * 18);
+                if (i === 0) { ctx.moveTo(x, y); } else { ctx.lineTo(x, y); }
+                x += sliceWidth;
+            }
+            ctx.stroke();
+        }
+
+        initCamera(currentFacingMode);
+        startLiveTelemetryEngine();
+    </script>
+</body>
+</html>

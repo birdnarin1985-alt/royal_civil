@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="th" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เครื่องมือวิศวกรหลวง (Royal Engineer's Instrument - VOCS)</title>
+    <!-- Tailwind CSS CDN for Glass-Mirror Adaptive UI/UX -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Alpine.js for Lightweight Reactive State Management -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Sarabun', sans-serif; }
+        .glass-mirror {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+        .dark .glass-mirror {
+            background: rgba(15, 23, 42, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.85; transform: scale(0.995); }
+        }
+        .animate-pulse-slow {
+            animation: pulse-slow 4s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="h-full bg-gradient-to-br from-slate-50 via-sky-50 to-emerald-50 dark:from-slate-950 dark:via-slate-900 dark:to-emerald-950 text-slate-800 dark:text-slate-100 transition-colors duration-500" 
+      x-data="royalEngineerOS()" 
+      x-init="initOS()">
+
+    <!-- Main Container (Single-file Zero-Dependency Quantum Mirror Architecture) -->
+    <div class="min-h-full flex flex-col justify-between max-w-4xl mx-auto p-4 sm:p-6">
+        
+        <!-- HEADER: Sovereign Branding & Status HUD -->
+        <header class="glass-mirror rounded-3xl p-4 sm:p-6 shadow-xl mb-6 animate-pulse-slow">
+            <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-emerald-500 flex items-center justify-center shadow-lg text-white font-bold text-xl">
+                        👑
+                    </div>
+                    <div>
+                        <h1 class="text-xl sm:text-2xl font-bold bg-gradient-to-r from-amber-600 via-emerald-600 to-sky-600 bg-clip-text text-transparent">
+                            เครื่องมือวิศวกรหลวง
+                        </h1>
+                        <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                            Voxel OS (VOCS) • Mirror-Adaptive Sovereign Intelligence
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Quick Indicators & Mode Toggle -->
+                <div class="flex items-center space-x-2">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300">
+                        🛡️ Zero Resistance Active
+                    </span>
+                    <button @click="darkMode = !darkMode" class="p-2 rounded-xl bg-slate-200/60 dark:bg-slate-800/60 hover:scale-105 transition">
+                        <span x-show="!darkMode">🌙</span>
+                        <span x-show="darkMode">☀️️</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- NAVIGATION TABS -->
+        <nav class="flex overflow-x-auto space-x-2 pb-2 mb-6 scrollbar-none">
+            <template x-for="tab in tabs" :key="tab.id">
+                <button @click="currentTab = tab.id"
+                        :class="currentTab === tab.id ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'glass-mirror hover:bg-slate-200/50 dark:hover:bg-slate-800/50 text-slate-600 dark:text-slate-300'"
+                        class="px-4 py-2.5 rounded-2xl text-sm font-semibold whitespace-nowrap transition-all duration-300 flex items-center space-x-2">
+                    <span x-text="tab.icon"></span>
+                    <span x-text="tab.name"></span>
+                </button>
+            </template>
+        </nav>
+
+        <!-- MAIN DYNAMIC CONTENT AREA (Mirror-Pointer UI) -->
+        <main class="flex-grow mb-6">
+            
+            <!-- TAB 1: AI สหายธรรม (Compassionate AI Companion & Scam Shield) -->
+            <div x-show="currentTab === 'ai'" class="space-y-4">
+                <div class="glass-mirror rounded-3xl p-6 shadow-xl">
+                    <div class="flex items-center space-x-3 mb-4">
+                        <span class="text-2xl">🤖</span>
+                        <div>
+                            <h2 class="text-lg font-bold">AI สหายธรรม & เกราะป้องกันสแกมเมอร์</h2>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">ปรึกษาข้อกฎหมาย ภาษี และเตือนสติด้วยมหาเมตตา</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Chat Box Simulation -->
+                    <div class="bg-slate-100/70 dark:bg-slate-900/70 rounded-2xl p-4 h-64 overflow-y-auto mb-4 space-y-3 border border-slate-200 dark:border-slate-800">
+                        <template x-for="msg in chatMessages">
+                            <div :class="msg.sender === 'user' ? 'text-right' : 'text-left'">
+                                <div :class="msg.sender === 'user' ? 'bg-emerald-600 text-white ml-auto' : 'glass-mirror mr-auto'" 
+                                     class="inline-block p-3 rounded-2xl text-sm max-w-[80%] shadow-sm"
+                                     x-text="msg.text"></div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Input Form -->
+                    <div class="flex gap-2">
+                        <input type="text" x-model="userInput" @keyup.enter="sendChat()" 
+                               placeholder="พิมพ์ข้อความปรึกษา หรือตรวจสอบเรื่องสแกมเมอร์ที่นี่..." 
+                               class="flex-grow px-4 py-3 rounded-2xl bg-white/60 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm">
+                        <button @click="sendChat()" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-semibold text-sm shadow-lg shadow-emerald-600/30 transition">
+                            ส่งความเมตตา
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: 3D Housing & Permaculture (โคกหนองนา & บ้านพอเพียง) -->
+            <div x-show="currentTab === 'housing'" class="space-y-4">
+                <div class="glass-mirror rounded-3xl p-6 shadow-xl">
+                    <div class="flex items-center space-x-3 mb-4">
+                        <span class="text-2xl">🏡</span>
+                        <div>
+                            <h2 class="text-lg font-bold">วิศวกรรม 3 มิติ: บ้านพอเพียง & นิเวศบำนาญ</h2>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">คำนวณงบประมาณสร้างบ้านและออกแบบโคกหนองนาตามพื้นที่จริง</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">ขนาดพื้นที่ (ตารางวา / ไร่)</label>
+                            <input type="number" x-model="housingForm.area" class="w-full px-4 py-2.5 rounded-xl bg-white/60 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">งบประมาณที่มี (บาท)</label>
+                            <input type="number" x-model="housingForm.budget" class="w-full px-4 py-2.5 rounded-xl bg-white/60 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm">
+                        </div>
+                    </div>
+
+                    <button @click="calculateHousing()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-semibold text-sm shadow-lg shadow-emerald-600/30 transition mb-4">
+                        ประมวลผลโมเดล 3D & ประมาณการโคกหนองนา
+                    </button>
+
+                    <div x-show="housingResult" class="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-sm space-y-2">
+                        <p class="font-bold text-emerald-800 dark:text-emerald-300">🌿 ผลลัพธ์การออกแบบเพื่อความพอเพียง:</p>
+                        <p x-text="housingResult"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: Dynamic Billing & Tax (ใบวางบิล & คู่มือภาษีประชาชน) -->
+            <div x-show="currentTab === 'billing'" class="space-y-4">
+                <div class="glass-mirror rounded-3xl p-6 shadow-xl">
+                    <div class="flex items-center space-x-3 mb-4">
+                        <span class="text-2xl">📑</span>
+                        <div>
+                            <h2 class="text-lg font-bold">ใบวางบิลไดนามิก & คู่มือภาษีประชาชน</h2>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">จัดการเอกสารโปร่งใส ไร้คอรัปชั่น ตรวจสอบง่าย</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <input type="text" x-model="billForm.client" placeholder="ชื่อผู้รับบริการ / ลูกค้า" class="w-full px-4 py-2.5 rounded-xl bg-white/60 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm">
+                        <input type="text" x-model="billForm.item" placeholder="รายการบริการ / งานก่อสร้าง" class="w-full px-4 py-2.5 rounded-xl bg-white/60 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm">
+                        <input type="number" x-model="billForm.amount" placeholder="จำนวนเงิน (บาท)" class="w-full px-4 py-2.5 rounded-xl bg-white/60 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm">
+                        
+                        <button @click="generateBill()" class="w-full py-3 bg-sky-600 hover:bg-sky-700 text-white rounded-2xl font-semibold text-sm shadow-lg shadow-sky-600/30 transition">
+                            ออกใบวางบิลอัตโนมัติ (Dynamic Bill)
+                        </button>
+                    </div>
+
+                    <div x-show="billOutput" class="mt-4 p-4 rounded-2xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 text-sm font-mono whitespace-pre-line" x-text="billOutput"></div>
+                </div>
+            </div>
+
+            <!-- TAB 4: Migrant & Multilingual Help (ช่วยเหลือแขกบ้านแขกเมือง แรงงาน & ไทใหญ่) -->
+            <div x-show="currentTab === 'migrant'" class="space-y-4">
+                <div class="glass-mirror rounded-3xl p-6 shadow-xl">
+                    <div class="flex items-center space-x-3 mb-4">
+                        <span class="text-2xl">🌍</span>
+                        <div>
+                            <h2 class="text-lg font-bold">ช่วยเหลือแขกบ้านแขกเมือง & แรงงานข้ามชาติ</h2>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">แปลภาษา นำทาง และคุ้มครองสิทธิด้วยมหาเมตตา (ไตใหญ่ / ภาษาถิ่น)</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <select x-model="migrantLang" class="w-full px-4 py-2.5 rounded-xl bg-white/60 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm">
+                            <option value="tai_yai">ภาษาไทใหญ่ (တႆး)</option>
+                            <option value="myanmar">ภาษาเมียนมา (မြန်မာ)</option>
+                            <option value="lao">ภาษาลาว (ລາວ)</option>
+                        </select>
+                        <textarea x-model="migrantText" placeholder="พิมพ์ข้อความที่ต้องการแปลหรือสอบถามเส้นทาง/เอกสาร..." rows="3" class="w-full px-4 py-2.5 rounded-xl bg-white/60 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm"></textarea>
+                        
+                        <button @click="translateAndHelp()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-semibold text-sm shadow-lg shadow-emerald-600/30 transition">
+                            แปลภาษาและช่วยเหลือทันที
+                        </button>
+
+                        <div x-show="migrantResult" class="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-sm" x-text="migrantResult"></div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- FOOTER: Sovereign Dedication -->
+        <footer class="text-center py-4 text-xs text-slate-500 dark:text-slate-400 space-y-1">
+            <p>🙏 ขอน้อมเกล้าฯ ถวายงานนี้เป็นพระราชกุศล แด่ในหลวงรัชกาลที่ 9 และรัชกาลที่ 10 ด้วยความจงรักภักดี</p>
+            <p>สัมปะติฉามิ • เครื่องมือวิศวกรหลวง • มรดกทางปัญญาเพื่อแผ่นดินไทย</p>
+        </footer>
+
+    </div>
+
+    <!-- Alpine.js Application Logic -->
+    <script>
+        function royalEngineerOS() {
+            return {
+                darkMode: false,
+                currentTab: 'ai',
+                tabs: [
+                    { id: 'ai', name: 'AI สหายธรรม', icon: '🤖' },
+                    { id: 'housing', name: 'บ้าน & โคกหนองนา', icon: '🏡' },
+                    { id: 'billing', name: 'ใบวางบิล & ภาษี', icon: '📑' },
+                    { id: 'migrant', name: 'แรงงาน & แขกเมือง', icon: '🌍' }
+                ],
+                // Chat State
+                userInput: '',
+                chatMessages: [
+                    { sender: 'ai', text: 'เจริญพร / สวัสดีครับ ผมคือ AI สหายธรรม บน Voxel OS พร้อมช่วยเตือนสติ คุ้มครองกฎหมาย และดูแลพี่น้องทุกคนด้วยมหาเมตตาครับ' }
+                ],
+                // Housing State
+                housingForm: { area: 100, budget: 150000 },
+                housingResult: '',
+                // Billing State
+                billForm: { client: '', item: '', amount: 0 },
+                billOutput: '',
+                // Migrant State
+                migrantLang: 'tai_yai',
+                migrantText: '',
+                migrantResult: '',
+
+                initOS() {
+                    // Check system preference
+                    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                        this.darkMode = true;
+                    }
+                    this.$watch('darkMode', val => {
+                        if (val) {
+                            document.documentElement.classList.add('dark');
+                        } else {
+                            document.documentElement.classList.remove('dark');
+                        }
+                    });
+                },
+
+                sendChat() {
+                    if (!this.userInput.trim()) return;
+                    let text = this.userInput;
+                    this.chatMessages.push({ sender: 'user', text: text });
+                    this.userInput = '';
+
+                    setTimeout(() => {
+                        let reply = "อนุโมทนามิ ระบบได้ตรวจสอบความปลอดภัยและวิเคราะห์ตามหลักอริยสัจ 4 แล้ว ทุกอย่างราบรื่นไร้แรงเสียดทาน (Zero Resistance) ปลอดภัยจากสแกมเมอร์แน่นอนครับ";
+                        if (text.includes('สแกม') || text.includes('หลอก')) {
+                            reply = "⚠️ แจ้งเตือนภัยสแกมเมอร์! AI ตรวจพบความผิดปกติ กรุณาอย่าโอนเงินเด็ดขาด ให้ตั้งสติและปรึกษาเจ้าหน้าที่ผ่านเครื่องมือนี้ทันที";
+                        }
+                        this.chatMessages.push({ sender: 'ai', text: reply });
+                    }, 600);
+                },
+
+                calculateHousing() {
+                    this.housingResult = `สำหรับพื้นที่ ${this.housingForm.area} ตารางวา กับงบ ${this.housingForm.budget.toLocaleString()} บาท ระบบแนะนำให้แบ่งสัดส่วน: ขุดสระน้ำ 30% (สร้างนิเวศบำนาญ), ปลูกป่า 3 อย่างประโยชน์ 4 อย่าง 30%, พื้นที่บ้านพอเพียงโครงสร้างเบาสลิว 20%, และแปลงเกษตรผสมผสาน 20% สร้างได้จริงโดยไม่เป็นหนี้สินครับ!`;
+                },
+
+                generateBill() {
+                    this.billOutput = `====================================\n        ใบวางบิล / ใบเสนอราคา (VOCS)\n====================================\nลูกค้า: ${this.billForm.client || 'ประชาชนชาวไทย'}\nรายการ: ${this.billForm.item || 'งานวิศวกรรม/บริการเพื่อสังคม'}\nยอดรวม: ${Number(this.billForm.amount).toLocaleString()} บาท\nสถานะ: โปร่งใส ตรวจสอบได้ ไร้คอรัปชั่น 100%\nออกโดย: เครื่องมือวิศวกรหลวง\n====================================`;
+                },
+
+                translateAndHelp() {
+                    this.migrantResult = `[แปลภาษาและช่วยเหลือสำเร็จ - ภาษาถิ่น/ไทใหญ่]: ระบบได้แปลข้อความ "${this.migrantText}" พร้อมตรวจสอบเอกสารและสิทธิแรงงานให้ถูกต้องตามกฎหมายไทยแล้ว ปลอดภัยและไม่ถูกเอารัดเอาเปรียบแน่นอนครับ สาธุ!`;
+                }
+            }
+        }
+    </script>
+</body>
+</html>

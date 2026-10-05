@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum OS - Sovereign EUC Indra's Net Controller</title>
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: rgba(17, 24, 39, 0.7);
+            --accent: #10b981;
+            --accent-glow: rgba(16, 185, 129, 0.4);
+            --danger: #ef4444;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        header {
+            padding: 16px;
+            text-align: center;
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        h1 {
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+            color: var(--accent);
+            text-transform: uppercase;
+        }
+
+        .container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            gap: 16px;
+            max-width: 600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .viewport-card {
+            position: relative;
+            width: 100%;
+            height: 320px;
+            background: #000;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        }
+
+        #videoElement {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+
+        .hud-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 16px;
+        }
+
+        .hud-header, .hud-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .badge {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--danger);
+            transition: background 0.3s;
+        }
+
+        .status-dot.active {
+            background: var(--accent);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .radar-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 140px;
+            height: 140px;
+            border: 2px dashed rgba(16, 185, 129, 0.4);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse-radar 3s infinite linear;
+        }
+
+        @keyframes pulse-radar {
+            0% { transform: translate(-50%, -50%) scale(0.95); opacity: 0.6; }
+            50% { transform: translate(-50%, -50%) scale(1.05); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(0.95); opacity: 0.6; }
+        }
+
+        .target-crosshair {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--accent);
+            position: relative;
+        }
+
+        .target-crosshair::before, .target-crosshair::after {
+            content: '';
+            position: absolute;
+            background: var(--accent);
+        }
+        .target-crosshair::before { top: 10px; left: -6px; width: 32px; height: 2px; }
+        .target-crosshair::after { top: -6px; left: 10px; width: 2px; height: 32px; }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .card-title {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .card-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .btn-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #059669, #10b981);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            padding: 14px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        button:active {
+            transform: scale(0.97);
+        }
+
+        button.secondary {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            box-shadow: none;
+        }
+
+        button.danger {
+            background: linear-gradient(135deg, #dc2626, #ef4444);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+
+        .log-console {
+            background: #030712;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px;
+            font-family: "Courier New", Courier, monospace;
+            font-size: 0.75rem;
+            color: #34d399;
+            height: 90px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Quantum OS // Indra's Net S18</h1>
+    </header>
+
+    <div class="container">
+        <!-- Viewport Camera Feed -->
+        <div class="viewport-card">
+            <video id="videoElement" autoplay playsinline muted></video>
+            <div class="radar-box">
+                <div class="target-crosshair"></div>
+            </div>
+            <div class="hud-overlay">
+                <div class="hud-header">
+                    <div class="badge">
+                        <div id="statusDot" class="status-dot"></div>
+                        <span id="connectionStatus">DISCONNECTED</span>
+                    </div>
+                    <div class="badge">OMNI-VISION 360°</div>
+                </div>
+                <div class="hud-footer">
+                    <div class="badge">TARGET: 1.0m HOLD</div>
+                    <div class="badge">MODE: BLIND-GUIDE</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Telemetry Data Grid -->
+        <div class="control-grid">
+            <div class="card">
+                <span class="card-title">S18 Balance (IMU)</span>
+                <span class="card-value" id="imuValue">0.0° Level</span>
+            </div>
+            <div class="card">
+                <span class="card-title">Standoff Distance</span>
+                <span class="card-value" id="distanceValue">1.00 m</span>
+            </div>
+        </div>
+
+        <!-- Control Action Buttons -->
+        <div class="btn-stack">
+            <button id="connectBtn">เชื่อมต่อเครือข่ายตาข่าย (Bluetooth / WebBLE)</button>
+            <button id="modeToggleBtn" class="secondary">สลับโหมด: นำทางคนตาบอด (Blind-Guide)</button>
+            <button id="emergencyBtn" class="danger">ฉุกเฉิน / ล็อกเบรกทันที (EMERGENCY STOP)</button>
+        </div>
+
+        <!-- Terminal Log Console -->
+        <div class="log-console" id="logConsole">
+            [Quantum OS Core]: Initialized successfully.<br>
+            [Indra's Net]: Awaiting BLE Handshake with S18...<br>
+        </div>
+    </div>
+
+    <script>
+        const videoElement = document.getElementById('videoElement');
+        const connectBtn = document.getElementById('connectBtn');
+        const modeToggleBtn = document.getElementById('modeToggleBtn');
+        const emergencyBtn = document.getElementById('emergencyBtn');
+        const statusDot = document.getElementById('statusDot');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const imuValue = document.getElementById('imuValue');
+        const distanceValue = document.getElementById('distanceValue');
+        const logConsole = document.getElementById('logConsole');
+
+        let bluetoothDevice = null;
+        let bluetoothCharacteristic = null;
+        let isConnected = false;
+        let currentMode = "BLIND-GUIDE"; // BLIND-GUIDE or FOLLOW-ME
+
+        function log(msg) {
+            const time = new Date().toLocaleTimeString();
+            logConsole.innerHTML += `[${time}] ${msg}<br>`;
+            logConsole.scrollTop = logConsole.scrollHeight;
+        }
+
+        // Initialize Camera Stream (Quantum OS Omni-Vision)
+        async function initCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+                    audio: false
+                });
+                videoElement.srcObject = stream;
+                log("Quantum OS Omni-Vision Camera active.");
+            } catch (err) {
+                log("Camera Error: " + err.message);
+            }
+        }
+
+        // Web Bluetooth Connection to King Song S18 / ESP32 Indra's Net Gateway
+        connectBtn.addEventListener('click', async () => {
+            try {
+                log("Scanning for Indra's Net Nodes / King Song S18...");
+                bluetoothDevice = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb'] // Standard King Song / HM-10 UUID
+                });
+
+                log(`Connecting to ${bluetoothDevice.name || 'S18 Sovereign Unit'}...`);
+                const server = await bluetoothDevice.gatt.connect();
+                const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
+                bluetoothCharacteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
+
+                isConnected = true;
+                statusDot.classList.add('active');
+                connectionStatus.textContent = "CONNECTED (SECURE)";
+                connectBtn.textContent = "เชื่อมต่อสำเร็จ (Indra's Net Active)";
+                connectBtn.style.background = "rgba(16, 185, 129, 0.2)";
+
+                log("Indra's Net Secure Mesh Established!");
+                startTelemetrySimulation();
+
+            } catch (error) {
+                log("Connection Failed: " + error);
+            }
+        });
+
+        // Mode Switching
+        modeToggleBtn.addEventListener('click', () => {
+            if (currentMode === "BLIND-GUIDE") {
+                currentMode = "FOLLOW-ME";
+                modeToggleBtn.textContent = "สลับโหมด: วิ่งตามหลัง (Follow-Me)";
+                log("Switched to Sovereign Follow-Me Mode.");
+            } else {
+                currentMode = "BLIND-GUIDE";
+                modeToggleBtn.textContent = "สลับโหมด: นำทางคนตาบอด (Blind-Guide)";
+                log("Switched to Sovereign Blind-Guide Companion Mode.");
+            }
+        });
+
+        // Emergency Stop / Fail-Safe
+        emergencyBtn.addEventListener('click', () => {
+            log("EMERGENCY STOP TRIGGERED: Locking S18 Hub Motor.");
+            if (isConnected && bluetoothCharacteristic) {
+                const encoder = new TextEncoder();
+                bluetoothCharacteristic.writeValue(encoder.encode("STOP\n"));
+            }
+            alert("⚠️ สัญญาณฉุกเฉิน: ล็อกเบรกอาชาศึก S18 ทันที!");
+        });
+
+        // Simulated Telemetry Loop for Real-time Feedback
+        function startTelemetrySimulation() {
+            setInterval(() => {
+                if (!isConnected) return;
+                // Mock dynamic balance angle and distance
+                const mockAngle = (Math.sin(Date.now() / 1000) * 0.4).toFixed(2);
+                const mockDist = (1.00 + Math.cos(Date.now() / 1500) * 0.05).toFixed(2);
+
+                imuValue.textContent = `${mockAngle}° Level`;
+                distanceValue.textContent = `${mockDist} m`;
+            }, 500);
+        }
+
+        // Boot
+        initCamera();
+    </script>
+</body>
+</html>
